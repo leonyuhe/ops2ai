@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/ops2ai',
   integrations: [
     starlight({
-      title: 'Ops2AI · 传统运维的 AI Infra 之路',
+      title: 'Ops2AI · 传统运维的 AI 转型指南',
       customCss: ['./src/styles/custom.css'],
       favicon: '/favicon.svg',
       lastUpdated: true,
