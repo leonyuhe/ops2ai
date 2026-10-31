@@ -26,6 +26,8 @@ export default defineConfig({
         { label: 'GPU 与 CUDA', autogenerate: { directory: '05-gpu-cuda' } },
         { label: '分布式训练', autogenerate: { directory: '06-training' } },
         { label: '推理优化', autogenerate: { directory: '07-inference' } },
+        { label: 'Agent 与 RAG 工程', autogenerate: { directory: '08-agentic' } },
+        { label: '故障案例库', autogenerate: { directory: '09-troubleshooting' } },
         { label: '生产实战', autogenerate: { directory: '04-production' } },
         { label: '关于本站', link: '/about/' },
       ],
