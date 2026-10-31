@@ -7,13 +7,13 @@ export default defineConfig({
   base: '/ops2ai',
   integrations: [
     starlight({
-      title: 'Ops2AI 老运维的 AI 转型指南',
+      title: 'Ops2AI · 传统运维的 AI Infra 之路',
       customCss: ['./src/styles/custom.css'],
       favicon: '/favicon.svg',
       lastUpdated: true,
       editLink: { baseUrl: 'https://github.com/leonyuhe/ops2ai/edit/main/' },
       pagination: true,
-      description: '帮助传统运维/SRE 工程师系统转型 AI Infra 与 AI 工程的开源指南',
+      description: '传统运维工程师的 AI Infra 转型之路：从 GPU 与 CUDA 到分布式训练与推理优化的系统指南',
       defaultLocale: 'root',
       locales: { root: { label: '简体中文', lang: 'zh-CN' } },
       social: [
@@ -23,7 +23,9 @@ export default defineConfig({
         { label: '转型地图', autogenerate: { directory: '00-roadmap' } },
         { label: 'AI 认知补课', autogenerate: { directory: '01-ai-basics' } },
         { label: '工程基础', autogenerate: { directory: '02-engineering' } },
-        { label: 'AI Infra 核心', autogenerate: { directory: '03-ai-infra' } },
+        { label: 'GPU 与 CUDA', autogenerate: { directory: '05-gpu-cuda' } },
+        { label: '分布式训练', autogenerate: { directory: '06-training' } },
+        { label: '推理优化', autogenerate: { directory: '07-inference' } },
         { label: '生产实战', autogenerate: { directory: '04-production' } },
         { label: '关于本站', link: '/about/' },
       ],

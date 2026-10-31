@@ -1,9 +1,9 @@
 ---
-title: Ops2AI · 老运维的 AI 转型指南
-description: 帮助传统运维/SRE 工程师系统转型 AI Infra 与 AI 工程的开源指南
+title: Ops2AI · 传统运维的 AI Infra 之路
+description: 传统运维工程师的 AI Infra 转型之路：从 GPU 与 CUDA 到分布式训练与推理优化的系统指南
 template: splash
 hero:
-  tagline: 你的 Linux、网络、监控、K8s 功底不是包袱，是转型的起跑线。
+  tagline: 你的 Linux、网络、监控、K8s 功底不是包袱，是转型的起跑线。从系统运维到 AI Infra，每一步都算数。
   actions:
     - text: 从转型地图开始
       link: /ops2ai/00-roadmap/skill-map/
@@ -17,7 +17,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## 这个网站为谁而建
 
-写给在机房、在云平台、在监控大屏前奋斗了多年的运维工程师和 SRE。大模型时代没有淘汰运维，而是把运维的核心能力——稳定性、可观测性、容量规划、故障排查——平移到了 AI 基础设施上。本站帮你完成这次平移。
+写给在机房、在云平台、在监控大屏前奋斗多年的传统运维工程师和 SRE。大模型时代没有淘汰运维，而是把运维的核心能力——稳定性、可观测性、容量规划、故障排查——平移到了 AI 基础设施上。本站陪你走完这条平移之路。
 
 <CardGrid stagger>
   <Card title="转型地图" icon="map">
@@ -26,10 +26,16 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   <Card title="AI 认知补课" icon="open-book">
     给运维写的 AI 入门：不堆公式，先建立直觉，再补原理。
   </Card>
-  <Card title="AI Infra 核心" icon="rocket">
-    分布式训练与推理优化的主干知识，全部用系统工程师的语言讲。
+  <Card title="GPU 与 CUDA" icon="laptop">
+    从 SM 架构到 Warp 执行，从内存层次到 FlashAttention——理解算力的物理来源。
+  </Card>
+  <Card title="分布式训练" icon="random">
+    显存账本、集合通信、DDP/FSDP/ZeRO、3D 并行——大模型训练的系统工程。
+  </Card>
+  <Card title="推理优化" icon="rocket">
+    PagedAttention、连续批处理、量化、投机解码、PD 分离——让模型又快又省。
   </Card>
   <Card title="生产实战" icon="setting">
-    K8s 部署大模型、GPU 容量规划、LLM 可观测性——运维经验直接变现的模块。
+    K8s 部署大模型、GPU 监控体系、容量规划——运维经验直接变现的主场。
   </Card>
 </CardGrid>
