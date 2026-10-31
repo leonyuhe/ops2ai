@@ -155,3 +155,85 @@
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18);
 }
+
+/* ===== 科技感升级 ===== */
+
+/* 深色模式：网点矩阵背景 */
+:root[data-theme='dark'] body {
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.08), transparent 40%),
+    radial-gradient(circle at 85% 70%, rgba(124, 58, 237, 0.07), transparent 40%),
+    radial-gradient(rgba(96, 165, 250, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
+}
+
+/* Hero 大标题：渐变 + 微光 */
+[data-page-has-hero] h1 {
+  background: linear-gradient(92deg, #60a5fa 0%, #a78bfa 55%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 42px rgba(96, 165, 250, 0.25);
+}
+[data-page-has-hero] .tagline {
+  color: var(--sl-color-gray-2);
+  font-size: 1.15rem;
+}
+
+/* 二级标题：左侧光带 */
+.sl-markdown-content h2 {
+  position: relative;
+  padding-left: 0.9rem;
+}
+.sl-markdown-content h2::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.22em; bottom: 0.22em;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+
+/* 卡片：边框辉光 */
+.card {
+  position: relative;
+  border: 1px solid var(--sl-color-hairline) !important;
+  background: linear-gradient(145deg, rgba(37,99,235,0.05), rgba(124,58,237,0.04));
+}
+.card:hover {
+  border-color: var(--sl-color-accent) !important;
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.22), inset 0 0 24px rgba(37, 99, 235, 0.05);
+}
+
+/* 代码块：终端风 */
+.sl-markdown-content .expressive-code {
+  border-radius: 0.6rem;
+  box-shadow: 0 0 0 1px var(--sl-color-hairline), 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.expressive-code .header {
+  background: linear-gradient(90deg, rgba(37,99,235,0.12), rgba(124,58,237,0.10));
+}
+
+/* 表格头部渐变 */
+.sl-markdown-content th {
+  background: linear-gradient(90deg, #1d4ed8, #6d28d9);
+}
+
+/* 导航侧栏当前项高亮 */
+.sidebar-content a[aria-current='page'] {
+  border-left: 3px solid var(--sl-color-accent);
+  background: linear-gradient(90deg, rgba(37,99,235,0.12), transparent);
+}
+
+/* 链接微动效 */
+.sl-markdown-content a {
+  transition: color 0.12s ease;
+}
+
+/* 页脚与分隔线柔化 */
+.sl-markdown-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sl-color-accent), transparent);
+  opacity: 0.4;
+}

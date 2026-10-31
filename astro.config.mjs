@@ -28,6 +28,7 @@ export default defineConfig({
         { label: '推理优化', autogenerate: { directory: '07-inference' } },
         { label: 'Agent 与 RAG 工程', autogenerate: { directory: '08-agentic' } },
         { label: '故障案例库', autogenerate: { directory: '09-troubleshooting' } },
+        { label: '转型故事', autogenerate: { directory: '10-stories' } },
         { label: '生产实战', autogenerate: { directory: '04-production' } },
         { label: '关于本站', link: '/about/' },
       ],
