@@ -30,7 +30,7 @@ GPU 从全局内存取数以 32 字节/128 字节的事务为单位。一个 War
 
 共享内存是 CUDA 优化区别于 CPU 优化的最大特色——它完全由你手动控制：
 
-```cuda
+```cpp
 __shared__ float tile[256];   // block 内所有线程可见
 tile[threadIdx.x] = gdata[i]; // 从全局搬一次
 __syncthreads();              // block 内同步

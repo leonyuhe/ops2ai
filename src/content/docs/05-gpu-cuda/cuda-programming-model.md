@@ -10,7 +10,7 @@ order: 2
 
 一个 kernel（GPU 上执行的函数）启动时要指定两级配置：
 
-```cuda
+```cpp
 kernel<<<gridDim, blockDim>>>(args);  // gridDim 个 block，每 block 含 blockDim 个线程
 ```
 
@@ -25,7 +25,7 @@ kernel<<<gridDim, blockDim>>>(args);  // gridDim 个 block，每 block 含 block
 
 ## 索引计算：每个线程找到自己的活
 
-```cuda
+```cpp
 __global__ void vec_add(const float* a, const float* b, float* c, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;  // 全局线程编号
     if (i < n) c[i] = a[i] + b[i];
@@ -46,7 +46,7 @@ __global__ void vec_add(const float* a, const float* b, float* c, int n) {
 
 GPU 有自己的显存，数据要显式搬运：
 
-```cuda
+```cpp
 float *d_a;
 cudaMalloc(&d_a, n * sizeof(float));                    // 显存分配
 cudaMemcpy(d_a, h_a, n * sizeof(float), cudaMemcpyHostToDevice);  // 主机→显存

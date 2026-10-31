@@ -17,7 +17,7 @@ SM 调度执行的最小单位不是线程，而是 Warp（32 个线程一组）
 
 ## 分支分化（Divergence）
 
-```cuda
+```cpp
 if (threadIdx.x % 2 == 0) { /* 路径 A */ }
 else                      { /* 路径 B */ }
 ```
