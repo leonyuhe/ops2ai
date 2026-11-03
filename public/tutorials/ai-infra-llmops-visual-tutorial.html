@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="description" content="一份可视化 AI Infra 与 LLMOps 教程：从 GPU、并行训练、显存与推理服务，到评测、发布、观测与单位成本。">
+<title>AI Infra × LLMOps · 可视化教程</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310161e'/%3E%3Crect x='12' y='14' width='40' height='8' rx='2' fill='%23e8552f'/%3E%3Crect x='12' y='28' width='26' height='8' rx='2' fill='%23f3f0e8'/%3E%3Crect x='12' y='42' width='34' height='8' rx='2' fill='%230e7c74'/%3E%3C/svg%3E">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#f2efe7;
+  --paper:#fbf9f4;
+  --paper-2:#f7f3ea;
+  --ink:#151a21;
+  --body:#3f4957;
+  --muted:#687483;
+  --dim:#9aa2ac;
+  --line:rgba(21,26,33,.13);
+  --line-strong:rgba(21,26,33,.25);
+  --orange:#e8552f;
+  --orange-soft:#ffebe2;
+  --orange-dark:#b93b1d;
+  --teal:#0d7a72;
+  --teal-soft:#e2f3ef;
+  --blue:#1e5bd7;
+  --violet:#6b4dff;
+  --lime:#5b8617;
+  --dark:#10161e;
+  --dark-2:#18222d;
+  --dark-3:#0b1118;
+  --on-dark:#eef3f8;
+  --on-dark-muted:#97a7b8;
+  --sidebar-w:246px;
+  --topbar-h:62px;
+  --radius:16px;
+  --sans:"Avenir Next","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  --display:"Helvetica Neue","Avenir Next","PingFang SC",system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+    linear-gradient(rgba(21,26,33,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(21,26,33,.035) 1px,transparent 1px),
+    radial-gradient(900px 600px at 86% -10%,rgba(232,85,47,.09),transparent 62%),
+    radial-gradient(720px 560px at 8% 28%,rgba(13,122,114,.075),transparent 62%),
+    var(--bg);
+  background-size:32px 32px,32px 32px,auto,auto,auto;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.7),transparent 80%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background:radial-gradient(1200px 800px at 55% 20%,transparent 40%,rgba(242,239,231,.5) 100%);
+}
+::selection{background:rgba(232,85,47,.2);color:var(--ink)}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--orange);outline-offset:3px;border-radius:5px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip-link{position:fixed;left:16px;top:-60px;z-index:200;background:var(--orange);color:#fff;padding:8px 13px;border-radius:7px;font-size:12px;transition:top .18s}
+.skip-link:focus{top:12px}
+
+/* ============ SIDEBAR ============ */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--orange),#ffb15c 55%,var(--teal));z-index:120;transition:width .08s linear}
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:90;
+  background:var(--dark);color:var(--on-dark);
+  display:flex;flex-direction:column;padding:24px 16px 18px;
+  transition:transform .32s cubic-bezier(.2,.7,.2,1);
+}
+.brand{display:flex;align-items:center;gap:11px;padding:0 10px;margin-bottom:26px;text-decoration:none;color:inherit}
+.brand:hover{text-decoration:none}
+.brand-mark{
+  width:38px;height:38px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.16);
+  background:linear-gradient(150deg,rgba(232,85,47,.35),rgba(13,122,114,.18));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+.brand-mark span{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:#fff;line-height:1.2;text-align:center}
+.brand-name{font-size:13.5px;font-weight:600;letter-spacing:.02em;line-height:1.3}
+.brand-sub{font-family:var(--mono);font-size:8px;color:#7f8d9d;letter-spacing:.15em;margin-top:3px;text-transform:uppercase}
+.nav-label{font-family:var(--mono);font-size:8px;letter-spacing:.2em;color:#6e7d8e;padding:0 11px;margin-bottom:9px}
+.side-nav{display:flex;flex-direction:column;gap:1px;overflow-y:auto;flex:1;scrollbar-width:thin}
+.side-nav a{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;
+  color:#9ba8b7;font-size:12px;text-decoration:none;transition:background .16s,color .16s;white-space:nowrap;
+}
+.side-nav a .num{font-family:var(--mono);font-size:8.5px;color:#637282;width:20px;flex:0 0 auto;transition:color .16s}
+.side-nav a:hover{background:rgba(255,255,255,.045);color:#fff;text-decoration:none}
+.side-nav a.active{background:rgba(232,85,47,.13);color:#fff}
+.side-nav a.active .num{color:#ff8b69}
+.side-nav a.active::after{content:"";margin-left:auto;width:4px;height:4px;border-radius:50%;background:var(--orange);box-shadow:0 0 8px rgba(232,85,47,.7)}
+.side-foot{border-top:1px solid rgba(255,255,255,.09);padding:13px 10px 0;margin-top:10px}
+.side-foot p{margin:0;font-family:var(--mono);font-size:8px;line-height:1.8;color:#697989;letter-spacing:.04em}
+.side-foot b{color:#a9b6c4;font-weight:500}
+
+/* ============ TOPBAR ============ */
+.topbar{
+  position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--topbar-h);z-index:80;
+  display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 34px;
+  background:rgba(242,239,231,.82);border-bottom:1px solid transparent;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:border-color .18s,background .18s;
+}
+.topbar.scrolled{border-bottom-color:var(--line);background:rgba(242,239,231,.94)}
+.crumb{display:flex;align-items:center;gap:9px;min-width:0;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+.crumb .dot{width:5px;height:5px;border-radius:50%;background:var(--orange);flex:0 0 auto}
+.crumb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-actions{display:flex;align-items:center;gap:7px}
+.top-chip{border:1px solid var(--line);background:rgba(255,255,255,.35);color:var(--muted);border-radius:99px;padding:5px 11px;font-family:var(--mono);font-size:8.5px;letter-spacing:.06em}
+.top-chip:hover{color:var(--ink);border-color:var(--line-strong);text-decoration:none}
+.menu-btn{display:none;position:fixed;left:14px;top:11px;z-index:95;width:36px;height:34px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);border-radius:7px;font-size:15px}
+.scrim{position:fixed;inset:0;z-index:85;background:rgba(16,22,30,.45);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .22s}
+.scrim.show{opacity:1;pointer-events:auto}
+
+/* ============ MAIN ============ */
+main{margin-left:var(--sidebar-w);padding-top:var(--topbar-h);position:relative}
+.wrap{max-width:1180px;margin:0 auto;padding:0 52px}
+section[id]{scroll-margin-top:calc(var(--topbar-h) + 22px)}
+.chapter{padding:88px 0 92px;border-top:1px solid var(--line);position:relative}
+.chapter:first-of-type{border-top:0}
+.ch-head{display:grid;grid-template-columns:82px minmax(0,1fr);gap:24px;align-items:start;margin-bottom:38px}
+.ch-index{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--dim);padding-top:10px;display:flex;flex-direction:column;gap:10px}
+.ch-index b{font-size:36px;line-height:1;font-weight:300;color:var(--orange);letter-spacing:-.04em}
+.ch-index .rule{width:22px;height:1px;background:var(--line-strong)}
+.ch-index span:last-child{font-size:7.5px;letter-spacing:.14em}
+.kicker{font-family:var(--mono);font-size:9px;letter-spacing:.17em;text-transform:uppercase;color:var(--orange);margin-bottom:10px}
+.ch-head h2{font-family:var(--display);font-size:clamp(28px,3.4vw,42px);line-height:1.16;letter-spacing:-.025em;font-weight:600;margin:0 0 12px;text-wrap:balance}
+.ch-lead{max-width:780px;margin:0;color:var(--muted);font-size:15px;line-height:1.85}
+.ch-lead b{color:var(--body);font-weight:600}
+.prose{max-width:790px}
+.prose p{margin:0 0 16px;color:var(--body);font-size:15px;line-height:1.9}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--ink);font-weight:600}
+.prose em{font-style:normal;color:var(--orange-dark);font-weight:500}
+.prose code,.inline-code{font-family:var(--mono);font-size:.84em;color:var(--teal);background:rgba(13,122,114,.07);border:1px solid rgba(13,122,114,.14);border-radius:4px;padding:1px 4px;white-space:nowrap}
+.lead-note{display:flex;gap:10px;max-width:790px;margin-top:18px;color:var(--dim);font-size:11.5px;line-height:1.7}
+.lead-note::before{content:"↳";color:var(--orange);font-family:var(--mono);flex:0 0 auto}
+.lead-note b{color:var(--body);font-weight:500}
+
+/* ============ HERO ============ */
+.hero{position:relative;padding:68px 0 78px;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero-inner{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);gap:52px;align-items:center;min-height:calc(100vh - var(--topbar-h) - 146px)}
+.eyebrow{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--teal);text-transform:uppercase;margin-bottom:22px}
+.eyebrow::before{content:"";width:30px;height:1px;background:var(--teal)}
+.hero h1{margin:0 0 18px;font-family:var(--display);font-weight:600;line-height:.96;letter-spacing:-.055em}
+.hero h1 .en{display:block;font-size:clamp(56px,7.4vw,92px);color:var(--ink)}
+.hero h1 .row2{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap}
+.hero h1 .cross{color:var(--dim);font-weight:300;font-size:clamp(36px,4.2vw,54px)}
+.hero h1 .ops{font-size:clamp(48px,6vw,76px);color:var(--orange)}
+.hero-sub{font-size:clamp(19px,2.2vw,25px);font-weight:500;color:var(--ink);margin:0 0 16px;letter-spacing:-.01em}
+.hero-sub span{color:var(--teal)}
+.hero-lead{max-width:600px;color:var(--body);font-size:15px;line-height:1.9;margin:0 0 26px}
+.hero-lead b{color:var(--ink);font-weight:600}
+.hero-meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:26px}
+.meta-pill{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:5px 10px;font-family:var(--mono);font-size:8.5px;color:var(--muted);background:rgba(255,255,255,.36)}
+.meta-pill i{width:4px;height:4px;border-radius:50%;background:var(--orange);display:block}
+.hero-cta{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:8px;padding:10px 16px;font-size:12.5px;font-weight:500;text-decoration:none;transition:transform .16s,background .16s,border-color .16s,box-shadow .16s}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn-primary{background:var(--orange);color:#fff;box-shadow:0 8px 24px rgba(232,85,47,.18)}
+.btn-primary:hover{background:#f2623a;box-shadow:0 10px 28px rgba(232,85,47,.24)}
+.btn-ghost{border-color:var(--line-strong);color:var(--ink);background:rgba(255,255,255,.32)}
+.btn-ghost:hover{background:rgba(255,255,255,.7)}
+.btn .arrow{font-family:var(--mono);transition:transform .16s}
+.btn:hover .arrow{transform:translateX(3px)}
+
+/* system map */
+.sysmap{
+  position:relative;background:var(--dark);color:var(--on-dark);border-radius:18px;overflow:hidden;
+  box-shadow:0 28px 70px rgba(20,26,34,.24),inset 0 1px 0 rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.1);
+}
+.sysmap::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.25;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:24px 24px}
+.sm-head{position:relative;z-index:2;display:flex;align-items:center;gap:7px;padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.02)}
+.sm-dot{width:5px;height:5px;border-radius:50%;background:var(--orange);box-shadow:0 0 9px rgba(232,85,47,.7);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sm-title{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:#8fa0b1}
+.sm-modes{display:flex;gap:2px;margin-left:auto;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:2px}
+.sm-modes button{border:0;background:transparent;color:#788a9b;font-family:var(--mono);font-size:7px;padding:4px 6px;border-radius:4px;letter-spacing:.03em}
+.sm-modes button.active{background:rgba(232,85,47,.22);color:#ffb397}
+.sm-body{position:relative;z-index:2;display:grid;grid-template-columns:1fr 58px 1fr;gap:8px;padding:18px 16px 14px;min-height:350px}
+.sm-col{display:flex;flex-direction:column;gap:7px;transition:opacity .25s}
+.sm-label{font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:#6e8294;margin-bottom:2px}
+.sm-col.ops .sm-label{color:#7da9a2;text-align:right}
+.sm-node{
+  border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:8px 10px;background:rgba(255,255,255,.028);
+  display:flex;flex-direction:column;gap:1px;position:relative;overflow:hidden;
+  transition:border-color .2s,background .2s,transform .2s;
+}
+.sm-node:hover{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.055);transform:translateX(2px)}
+.sm-col.ops .sm-node:hover{transform:translateX(-2px)}
+.sm-node b{font-size:10px;font-weight:500;color:#dce6f0;line-height:1.35}
+.sm-node span{font-family:var(--mono);font-size:6.5px;color:#7d8fa0;line-height:1.5}
+.sm-node::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--orange);opacity:.7}
+.sm-col.ops .sm-node::before{left:auto;right:0;background:var(--teal)}
+.sm-bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative}
+.sm-bridge .bl{font-family:var(--mono);font-size:6px;letter-spacing:.1em;color:#6f8294;writing-mode:vertical-rl;transform:rotate(180deg)}
+.sm-bridge .line{position:relative;flex:1;width:1px;background:linear-gradient(transparent,rgba(232,85,47,.5),rgba(13,122,114,.5),transparent);min-height:140px}
+.sm-bridge .dot{position:absolute;left:-2px;width:5px;height:5px;border-radius:50%;background:var(--orange);box-shadow:0 0 8px rgba(232,85,47,.8);animation:travel 3.4s infinite linear}
+@keyframes travel{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:100%;opacity:0}}
+.sm-bridge .tag{font-family:var(--mono);font-size:6px;color:#6f8294;letter-spacing:.05em;border:1px solid rgba(255,255,255,.1);border-radius:3px;padding:2px 4px}
+.sysmap.focus-infra .sm-col.ops{opacity:.25}
+.sysmap.focus-ops .sm-col.infra{opacity:.25}
+.sysmap.focus-infra .sm-bridge .dot{background:var(--orange)}
+.sysmap.focus-ops .sm-bridge .dot{background:var(--teal)}
+.sm-foot{position:relative;z-index:2;border-top:1px solid rgba(255,255,255,.09);padding:9px 15px;display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:6.5px;color:#6f8294;letter-spacing:.04em}
+.sm-foot b{color:#aab8c7;font-weight:400}
+.hero-note{display:flex;align-items:center;gap:8px;margin-top:14px;font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.03em}
+.hero-note::before{content:"";width:18px;height:1px;background:var(--line-strong)}
+
+/* ============ COMMON ============ */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.mt-16{margin-top:16px}.mt-20{margin-top:20px}.mt-24{margin-top:24px}.mt-32{margin-top:32px}.mt-40{margin-top:40px}
+.card{
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:21px;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 3px 12px rgba(21,26,33,.035);
+  transition:border-color .18s,box-shadow .18s;
+}
+.card:hover{border-color:var(--line-strong);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 24px rgba(21,26,33,.06)}
+.card h3{font-size:14px;font-weight:600;margin:0 0 7px;letter-spacing:-.005em}
+.card p{margin:0;font-size:12px;line-height:1.75;color:var(--muted)}
+.card p+p{margin-top:7px}
+.mini-label{font-family:var(--mono);font-size:7.5px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:7px}
+.callout{border-left:3px solid var(--orange);background:linear-gradient(90deg,rgba(232,85,47,.07),rgba(232,85,47,.015));border-radius:0 10px 10px 0;padding:15px 18px;margin:22px 0;max-width:850px}
+.callout .co-label{font-family:var(--mono);font-size:7.5px;letter-spacing:.15em;color:var(--orange-dark);margin-bottom:4px}
+.callout p{margin:0;font-size:13px;line-height:1.8;color:var(--body)}
+.callout p b{color:var(--ink)}
+.callout.teal{border-left-color:var(--teal);background:linear-gradient(90deg,rgba(13,122,114,.065),rgba(13,122,114,.012))}
+.callout.teal .co-label{color:var(--teal)}
+.callout.warn{border-left-color:var(--blue);background:linear-gradient(90deg,rgba(30,91,215,.055),rgba(30,91,215,.01))}
+.callout.warn .co-label{color:var(--blue)}
+.formula{font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--body);background:rgba(21,26,33,.035);border:1px solid var(--line);border-radius:7px;padding:9px 12px;margin:12px 0;overflow-x:auto;white-space:nowrap}
+.formula b{color:var(--orange-dark);font-weight:500}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-family:var(--mono);font-size:7.5px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 8px;background:rgba(255,255,255,.4)}
+.tag.orange{color:var(--orange-dark);border-color:rgba(232,85,47,.24);background:rgba(232,85,47,.055)}
+.tag.teal{color:var(--teal);border-color:rgba(13,122,114,.22);background:rgba(13,122,114,.045)}
+.tag.blue{color:var(--blue);border-color:rgba(30,91,215,.2);background:rgba(30,91,215,.04)}
+.viz{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.viz-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.34)}
+.viz-title{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.viz-title::before{content:"";width:5px;height:5px;background:var(--orange);transform:rotate(45deg)}
+.viz-hint{font-family:var(--mono);font-size:7.5px;color:var(--dim);letter-spacing:.03em}
+.viz-body{padding:20px}
+.viz-foot{border-top:1px solid var(--line);padding:9px 18px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:7px;color:var(--dim);line-height:1.6}
+.console{background:var(--dark);color:var(--on-dark);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);overflow:hidden;box-shadow:0 14px 38px rgba(20,26,34,.15)}
+.console .viz-head{border-bottom-color:rgba(255,255,255,.1);background:rgba(255,255,255,.025)}
+.console .viz-title{color:#8e9fb0}
+.console .viz-hint{color:#6c7e90}
+.console .viz-foot{border-top-color:rgba(255,255,255,.1);color:#718395}
+.seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.28)}
+.seg button{border:0;background:transparent;color:var(--muted);font-family:var(--mono);font-size:7.5px;letter-spacing:.02em;padding:4px 7px;border-radius:4px;transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink)}
+.seg button.active{background:var(--orange);color:#fff}
+.console .seg{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.035)}
+.console .seg button{color:#8799aa}
+.console .seg button.active{background:var(--orange);color:#fff}
+.icon-btn{border:1px solid var(--line);background:rgba(255,255,255,.35);color:var(--muted);border-radius:6px;padding:5px 9px;font-family:var(--mono);font-size:8px;transition:background .15s,color .15s}
+.icon-btn:hover{background:rgba(255,255,255,.8);color:var(--ink)}
+.console .icon-btn{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.04);color:#9aabbb}
+.console .icon-btn:hover{background:rgba(255,255,255,.09);color:#fff}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:99px;background:linear-gradient(90deg,var(--orange) var(--fill,50%),rgba(21,26,33,.12) var(--fill,50%));outline:none;margin:8px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--ink);border:3px solid var(--paper);box-shadow:0 0 0 1px var(--orange);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ink);border:3px solid var(--paper);box-shadow:0 0 0 1px var(--orange);cursor:pointer}
+.console input[type=range]{background:linear-gradient(90deg,var(--orange) var(--fill,50%),rgba(255,255,255,.15) var(--fill,50%))}
+.console input[type=range]::-webkit-slider-thumb{background:#fff;border-color:var(--dark);box-shadow:0 0 0 1px var(--orange)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.07s}.reveal.d2{transition-delay:.14s}.reveal.d3{transition-delay:.21s}
+.mono{font-family:var(--mono)}
+</style>
+<style>
+/* ============ DEFINITIONS ============ */
+.def-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.def-card{
+  background:var(--paper);border:1px solid var(--line);border-top:3px solid var(--orange);
+  border-radius:14px;padding:22px;box-shadow:0 3px 14px rgba(21,26,33,.04);
+}
+.def-card.ops{border-top-color:var(--teal)}
+.def-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.def-no{font-family:var(--mono);font-size:9px;color:var(--orange);letter-spacing:.05em}
+.def-card.ops .def-no{color:var(--teal)}
+.def-kind{font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--dim)}
+.def-card h3{font-family:var(--display);font-size:23px;line-height:1.2;margin:0 0 6px;letter-spacing:-.02em}
+.def-card h3 span{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--dim);font-weight:400;margin-top:3px;text-transform:uppercase}
+.def-one{font-size:13.5px;line-height:1.7;color:var(--ink);margin:0 0 8px}
+.def-one strong{color:var(--orange-dark);font-weight:600}
+.def-card.ops .def-one strong{color:var(--teal)}
+.def-body{font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 13px}
+.def-questions{display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:10px;gap:4px;margin-bottom:12px}
+.def-questions span{font-family:var(--mono);font-size:8.5px;color:var(--body);display:flex;gap:7px;align-items:baseline;line-height:1.55}
+.def-questions span::before{content:"?";color:var(--orange);font-weight:700;width:10px;flex:0 0 auto}
+.def-card.ops .def-questions span::before{color:var(--teal)}
+.def-tags{display:flex;gap:5px;flex-wrap:wrap}
+
+/* ============ SORT GAME ============ */
+.sort-game{max-width:900px;margin:0 auto}
+.sort-top{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
+.sort-count{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--dim)}
+.sort-score{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--muted)}
+.sort-score b{color:var(--orange);font-size:11px;font-weight:500}
+.sort-task{min-height:74px;font-family:var(--display);font-size:21px;line-height:1.45;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;padding:4px 0 14px}
+.sort-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sort-actions button{
+  text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:10px 12px;
+  transition:all .16s;color:var(--body);
+}
+.sort-actions button b{display:block;font-size:11.5px;color:var(--ink);font-weight:600;margin-bottom:3px}
+.sort-actions button span{display:block;font-family:var(--mono);font-size:6.8px;line-height:1.55;color:var(--dim)}
+.sort-actions button:hover{border-color:var(--line-strong);transform:translateY(-1px);box-shadow:0 5px 14px rgba(21,26,33,.06)}
+.sort-actions button:hover b{color:var(--orange)}
+.sort-actions button.correct{border-color:rgba(13,122,114,.5);background:var(--teal-soft)}
+.sort-actions button.correct b{color:var(--teal)}
+.sort-actions button.wrong{border-color:rgba(232,85,47,.55);background:var(--orange-soft)}
+.sort-actions button.wrong b{color:var(--orange-dark)}
+.sort-actions button:disabled{cursor:default;opacity:1}
+.sort-feedback{font-size:11.5px;line-height:1.75;color:var(--muted);min-height:46px;padding:12px 0 0}
+.sort-feedback b{color:var(--body);font-weight:600}
+.sort-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:11px;margin-top:4px}
+.sort-dots{display:flex;gap:4px}
+.sort-dots i{width:6px;height:6px;border-radius:50%;background:var(--line-strong);transition:background .2s}
+.sort-dots i.done{background:var(--orange)}
+.sort-dots i.now{background:var(--ink)}
+
+/* ============ STACK ============ */
+.stack-layout{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:16px;align-items:stretch}
+.stack-console{display:flex;flex-direction:column}
+.stack-body{padding:16px 16px 10px;display:flex;flex-direction:column;gap:5px;flex:1;justify-content:center}
+.stack-layer{
+  display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:9px;align-items:center;
+  text-align:left;border:1px solid rgba(255,255,255,.1);border-radius:6px;
+  background:rgba(255,255,255,.025);color:#bdcbd8;padding:8px 10px;
+  transition:all .17s;position:relative;overflow:hidden;
+}
+.stack-layer::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--orange);opacity:0;transition:opacity .17s}
+.stack-layer:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2)}
+.stack-layer.active{background:rgba(232,85,47,.12);border-color:rgba(232,85,47,.38);color:#fff}
+.stack-layer.active::before{opacity:1}
+.sl-n{font-family:var(--mono);font-size:7px;color:#73879a}
+.sl-t{font-size:10px;font-weight:500;color:#d7e1eb}
+.sl-d{font-family:var(--mono);font-size:6.5px;color:#718496;text-align:right}
+.stack-layer.active .sl-n{color:#ff9b7c}
+.stack-layer.active .sl-t{color:#fff}
+.stack-foot{display:flex;align-items:center;gap:7px;border-top:1px solid rgba(255,255,255,.1);padding:9px 15px;font-family:var(--mono);font-size:6.5px;color:#6a7d8f;letter-spacing:.02em}
+.stack-pulse{display:block;width:5px;height:5px;border-radius:50%;background:var(--orange);box-shadow:0 0 8px rgba(232,85,47,.7);animation:pulse 2.2s infinite}
+.stack-detail{display:flex;flex-direction:column;justify-content:center}
+.stack-detail h3{font-family:var(--display);font-size:22px;margin:0 0 9px;letter-spacing:-.02em}
+.stack-detail>p{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.stack-metrics{display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:11px;gap:6px}
+.stack-metrics span{font-family:var(--mono);font-size:8px;line-height:1.6;color:var(--dim);display:grid;grid-template-columns:42px 1fr;gap:7px}
+.stack-metrics b{color:var(--orange-dark);font-weight:500}
+
+/* latency hierarchy */
+.lat-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.lat-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:15px}
+.lat-head h3{font-size:14px;margin:0;font-weight:600}
+.lat-head .mono{font-size:7px;color:var(--dim);letter-spacing:.08em}
+.lat-bars{display:flex;flex-direction:column;gap:6px}
+.lat-row{display:grid;grid-template-columns:130px 1fr 64px;gap:10px;align-items:center}
+.lat-name{font-family:var(--mono);font-size:7.5px;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lat-track{height:7px;border-radius:99px;background:rgba(21,26,33,.06);overflow:hidden}
+.lat-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),#56c8b7);transition:width .5s}
+.lat-row:nth-child(1) .lat-fill{background:linear-gradient(90deg,#5b8617,#a5cf5c)}
+.lat-row:nth-child(2) .lat-fill{background:linear-gradient(90deg,var(--teal),#56c8b7)}
+.lat-row:nth-child(3) .lat-fill{background:linear-gradient(90deg,var(--blue),#63a0ff)}
+.lat-row:nth-child(4) .lat-fill{background:linear-gradient(90deg,var(--violet),#b3a5ff)}
+.lat-row:nth-child(5) .lat-fill{background:linear-gradient(90deg,var(--orange),#ffb15c)}
+.lat-val{font-family:var(--mono);font-size:7px;color:var(--dim);text-align:right}
+.lat-note{font-size:10px;line-height:1.7;color:var(--dim);margin:13px 0 0;border-top:1px solid var(--line);padding-top:10px}
+
+/* ============ ROOFLINE ============ */
+.roof-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr);gap:16px;align-items:stretch}
+.roof-console{display:flex;flex-direction:column}
+.roof-chart-wrap{padding:8px 12px 0;flex:1;display:flex;align-items:center}
+.roof-svg{width:100%;height:auto;display:block}
+.roof-grid line{stroke:rgba(255,255,255,.075);stroke-width:1}
+.roof-axis text{fill:#7f92a4;font-family:var(--mono);font-size:7.5px}
+.roof-label{fill:#65798c;font-family:var(--mono);font-size:7px;letter-spacing:.06em}
+.roof-curve{fill:none;stroke:url(#roofGrad);stroke-width:2.5;stroke-linecap:round}
+.roof-ridge{stroke:rgba(255,255,255,.25);stroke-dasharray:3 4;stroke-width:1}
+.roof-dot{fill:var(--orange);stroke:#10161e;stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(232,85,47,.65));transition:cx .35s,cy .35s}
+.roof-foot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.1);padding:9px 16px;font-family:var(--mono);font-size:7px;letter-spacing:.06em;color:#6f8294}
+.roof-foot span:first-child{color:#ff9b7c}
+.roof-panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.roof-read{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:14px}
+.roof-read div{display:flex;flex-direction:column;gap:1px}
+.roof-read span{font-family:var(--mono);font-size:6.5px;letter-spacing:.06em;color:var(--dim)}
+.roof-read b{font-family:var(--mono);font-size:21px;font-weight:400;line-height:1.2;color:var(--ink)}
+.roof-read small{font-family:var(--mono);font-size:6px;color:var(--dim)}
+.roof-control{display:flex;justify-content:space-between;font-family:var(--mono);font-size:7.5px;color:var(--dim);margin-bottom:2px}
+.roof-control b{color:var(--orange-dark);font-weight:500;font-size:9px}
+.roof-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}
+.roof-presets button{border:1px solid var(--line);background:rgba(255,255,255,.35);border-radius:6px;padding:6px 5px;text-align:left;font-family:var(--mono);font-size:7px;line-height:1.35;color:var(--body);transition:all .16s}
+.roof-presets button span{display:block;color:var(--dim);font-size:6px;margin-top:2px}
+.roof-presets button:hover,.roof-presets button.active{border-color:rgba(232,85,47,.4);background:var(--orange-soft);color:var(--orange-dark)}
+.roof-presets button.active span{color:var(--orange-dark)}
+.roof-explain{font-size:10.5px;line-height:1.72;color:var(--muted);margin:13px 0 0;min-height:55px}
+.roof-note{font-family:var(--mono);font-size:6.8px;line-height:1.7;color:var(--dim);border-top:1px solid var(--line);padding-top:9px;margin-top:12px}
+.roof-note b{color:var(--body);font-weight:500}
+</style>
+
+<style>
+/* ============ PARALLELISM ============ */
+.par-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);gap:16px;align-items:stretch}
+.par-console{display:flex;flex-direction:column}
+.par-canvas{padding:6px 10px 2px;flex:1;display:flex;align-items:center}
+.par-canvas svg{width:100%;height:auto;display:block}
+.par-legend{display:flex;gap:13px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.1);padding:8px 14px;font-family:var(--mono);font-size:6.5px;color:#718395;letter-spacing:.03em}
+.par-legend span{display:flex;align-items:center;gap:5px}
+.par-legend i{width:6px;height:6px;border-radius:1px;display:inline-block}
+.dot-orange{background:var(--orange)}
+.dot-teal{background:var(--teal)}
+.par-panel{display:flex;flex-direction:column}
+.par-panel h3{font-family:var(--display);font-size:20px;margin:0 0 8px;letter-spacing:-.02em}
+.par-panel>p{font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 14px}
+.par-metrics{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.par-metrics>div{display:grid;grid-template-columns:60px 1fr 34px;gap:7px;align-items:center}
+.par-metrics span{font-family:var(--mono);font-size:6.8px;color:var(--dim);white-space:nowrap}
+.par-metrics .bar{height:5px;border-radius:99px;background:rgba(21,26,33,.07);overflow:hidden}
+.par-metrics .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--orange),#ffb15c);transition:width .4s}
+.par-metrics>div:nth-child(2) .bar i{background:linear-gradient(90deg,var(--teal),#5bc8b8)}
+.par-metrics>div:nth-child(3) .bar i{background:linear-gradient(90deg,var(--blue),#6aa3ff)}
+.par-metrics b{font-family:var(--mono);font-size:7px;color:var(--muted);font-weight:400;text-align:right}
+.par-tip{font-size:10px;line-height:1.7;color:var(--dim);border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
+.par-tip b{color:var(--body);font-weight:600}
+
+.pg-box{fill:rgba(255,255,255,.035);stroke:rgba(255,255,255,.16);stroke-width:1;transition:fill .25s,stroke .25s}
+.pg-box.hot{fill:rgba(232,85,47,.12);stroke:rgba(232,85,47,.55)}
+.pg-box.teal{fill:rgba(13,122,114,.14);stroke:rgba(13,122,114,.55)}
+.pg-label{fill:#dce6f0;font-family:var(--mono);font-size:8px;text-anchor:middle}
+.pg-sub{fill:#8497a8;font-family:var(--mono);font-size:6.3px;text-anchor:middle}
+.pg-link{stroke:rgba(13,122,114,.5);stroke-width:1.5;stroke-dasharray:4 4;animation:dash 1.4s linear infinite}
+.pg-link.orange{stroke:rgba(232,85,47,.5)}
+@keyframes dash{to{stroke-dashoffset:-16}}
+.pg-group-label{fill:#73879a;font-family:var(--mono);font-size:6.5px;text-anchor:middle;letter-spacing:.06em}
+
+.ring-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:19px;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.ring-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ring-head h3{font-size:14px;margin:0;font-weight:600}
+.ring-stage{height:180px;margin:5px 0 4px}
+.ring-stage svg{width:100%;height:100%;display:block}
+.ring-node{fill:var(--paper);stroke:var(--line-strong);stroke-width:1.2}
+.ring-node-label{fill:var(--body);font-family:var(--mono);font-size:7px;text-anchor:middle}
+.ring-chunk{fill:var(--orange);filter:drop-shadow(0 0 4px rgba(232,85,47,.4))}
+.ring-card p{font-size:10.5px;line-height:1.7;color:var(--muted);margin:4px 0 0}
+.ring-card p b{color:var(--body);font-weight:600}
+
+/* ============ MEMORY ============ */
+.mem-layout{display:grid;grid-template-columns:minmax(280px,.68fr) minmax(0,1.32fr);gap:16px;align-items:stretch}
+.mem-controls{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:19px;display:flex;flex-direction:column;gap:15px;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.mem-group{display:flex;flex-direction:column;gap:5px}
+.mem-group .mini-label{margin-bottom:0}
+.mem-slider label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:7.5px;color:var(--dim)}
+.mem-slider label b{color:var(--orange-dark);font-weight:500;font-size:9px}
+.mem-slider input{margin:3px 0 0}
+.mem-fixed{display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;border-top:1px solid var(--line);padding-top:12px;font-family:var(--mono);font-size:7px;color:var(--dim);align-items:baseline}
+.mem-fixed b{font-size:10px;color:var(--body);font-weight:500}
+.mem-console{display:flex;flex-direction:column;padding-bottom:16px}
+.mem-read{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:17px 18px 9px}
+.mem-read span{font-family:var(--mono);font-size:7px;color:#8798a9;letter-spacing:.05em;display:block;margin-bottom:2px}
+.mem-read b{font-family:var(--mono);font-size:36px;line-height:1.1;font-weight:400;color:#fff}
+.mem-read small{font-family:var(--mono);font-size:8px;color:#7d8fa0;margin-left:4px}
+.mem-status{font-family:var(--mono);font-size:7.5px;border:1px solid rgba(255,255,255,.14);border-radius:5px;padding:5px 8px;color:#91a3b4;margin-bottom:5px}
+.mem-status.ok{color:#8ee6d2;border-color:rgba(13,122,114,.45);background:rgba(13,122,114,.1)}
+.mem-status.bad{color:#ff9b7c;border-color:rgba(232,85,47,.45);background:rgba(232,85,47,.1)}
+.mem-stack-wrap{position:relative;margin:4px 18px 0}
+.mem-stack{display:flex;height:28px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.06)}
+.ms{display:block;height:100%;transition:width .4s;min-width:0}
+.ms.weights{background:#e8552f}
+.ms.grads{background:#ffb15c}
+.ms.opt{background:#0d7a72}
+.ms.act{background:#4f8fe8}
+.mem-80{position:absolute;top:-4px;bottom:-4px;width:1px;background:rgba(255,255,255,.7);border-left:1px dashed rgba(255,255,255,.7);transition:left .4s}
+.mem-80 span{position:absolute;top:-16px;right:3px;font-family:var(--mono);font-size:6px;color:#bdcbd8;white-space:nowrap}
+.mem-legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;padding:13px 18px 0;margin-top:6px}
+.mem-legend span{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:7px;color:#91a3b4}
+.mem-legend span i{width:7px;height:7px;border-radius:1px;flex:0 0 auto}
+.mem-legend span b{margin-left:auto;color:#d4dee8;font-weight:400}
+.mem-formula{font-family:var(--mono);font-size:7px;line-height:1.7;color:#718395;border-top:1px solid rgba(255,255,255,.1);padding:9px 18px 0;margin-top:12px}
+
+/* ============ SERVING ============ */
+.serve-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);gap:16px;align-items:stretch}
+.serve-console{display:flex;flex-direction:column;padding-bottom:14px}
+.serve-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 16px 2px}
+.serve-legend{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--mono);font-size:6.5px;color:#7f92a4}
+.serve-legend span{display:flex;align-items:center;gap:4px}
+.serve-legend i{width:7px;height:7px;border-radius:1px;display:inline-block}
+.serve-actions{display:flex;gap:5px}
+.serve-timeline-wrap{position:relative;margin:8px 16px 0;border:1px solid rgba(255,255,255,.09);border-radius:6px;overflow:hidden;background:rgba(255,255,255,.02)}
+.serve-slots{display:flex;flex-direction:column;gap:2px;padding:4px}
+.serve-row{display:grid;gap:2px;height:24px}
+.serve-cell{border-radius:2px;background:rgba(255,255,255,.035);position:relative;overflow:hidden}
+.serve-cell.filled{background:var(--req-color);opacity:.88}
+.serve-cell.filled::after{content:"";position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.18)}
+.serve-cell.reserved{background:rgba(255,255,255,.045);border:1px dashed rgba(255,255,255,.1)}
+.serve-playhead{position:absolute;top:4px;bottom:4px;width:2px;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.6);left:0;transition:left .18s linear;pointer-events:none}
+.serve-axis{display:grid;gap:2px;padding:5px 20px 0;font-family:var(--mono);font-size:6px;color:#687d90}
+.serve-axis span{text-align:center}
+.serve-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:12px 16px 0;border:1px solid rgba(255,255,255,.1);border-radius:6px;overflow:hidden}
+.serve-metrics div{padding:8px 10px;background:rgba(255,255,255,.025)}
+.serve-metrics span{display:block;font-family:var(--mono);font-size:6px;color:#728699;letter-spacing:.04em}
+.serve-metrics b{font-family:var(--mono);font-size:19px;font-weight:400;color:#fff;line-height:1.25}
+.serve-metrics small{font-family:var(--mono);font-size:5.8px;color:#6c8092;display:block}
+.serve-copy{display:flex;flex-direction:column}
+.serve-copy h3{font-family:var(--display);font-size:20px;letter-spacing:-.02em;margin:0 0 8px}
+.serve-copy p{font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 9px}
+.serve-note{font-size:10px;line-height:1.7;color:var(--dim);border-top:1px solid var(--line);padding-top:9px;margin-top:3px}
+.serve-note b{color:var(--teal);font-weight:600}
+.paged-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:19px;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.paged-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.paged-head h3{font-size:14px;margin:0;font-weight:600}
+.paged-head .mono{font-size:6.5px;color:var(--dim);letter-spacing:.06em}
+.paged-blocks{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin-bottom:10px}
+.paged-block{height:24px;border-radius:3px;border:1px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:6px;color:var(--muted);background:rgba(21,26,33,.035);transition:background .2s}
+.paged-block.used{background:var(--orange-soft);border-color:rgba(232,85,47,.3);color:var(--orange-dark)}
+.paged-block.used.b{background:var(--teal-soft);border-color:rgba(13,122,114,.28);color:var(--teal)}
+.paged-block.used.c{background:rgba(30,91,215,.07);border-color:rgba(30,91,215,.23);color:var(--blue)}
+.paged-card p{font-size:10.5px;line-height:1.75;color:var(--muted);margin:0}
+</style>
+
+<style>
+/* ============ COMPRESSION ============ */
+.comp-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:16px;align-items:stretch}
+.comp-console{display:flex;flex-direction:column}
+.comp-panel{display:none;padding:16px;flex:1}
+.comp-panel.active{display:block;animation:fadeIn .25s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.quant-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.9fr);gap:18px;align-items:center;min-height:250px}
+.quant-visual{border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.02);padding:14px;height:100%;display:flex;flex-direction:column;justify-content:center}
+.quant-vtitle{font-family:var(--mono);font-size:6.5px;letter-spacing:.1em;color:#728699;margin-bottom:14px}
+.bit-grid{display:grid;grid-template-columns:repeat(32,1fr);gap:2px;align-items:end;min-height:70px;height:70px}
+.bit-cell{background:linear-gradient(180deg,#ff9b7c,#e8552f);border-radius:1px;height:8px;transition:height .35s,opacity .35s}
+.quant-blabel{font-family:var(--mono);font-size:7px;color:#8da0b1;margin-top:12px;border-top:1px solid rgba(255,255,255,.1);padding-top:9px}
+.quant-side{display:flex;flex-direction:column;gap:12px}
+.quant-metrics{display:flex;flex-direction:column;gap:8px}
+.quant-metrics>div{display:grid;grid-template-columns:80px 1fr 42px;gap:7px;align-items:center}
+.quant-metrics span{font-family:var(--mono);font-size:7px;color:#899cad;white-space:nowrap}
+.quant-metrics b{font-family:var(--mono);font-size:9px;font-weight:400;color:#e8eff6;text-align:right}
+.qbar{height:5px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.qbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#e8552f,#ffb15c);transition:width .35s}
+.qbar.teal i{background:linear-gradient(90deg,#0d7a72,#55ccb9)}
+.qbar.blue i{background:linear-gradient(90deg,#1e5bd7,#70a8ff)}
+.quant-note{font-size:10px;line-height:1.7;color:#899cad;margin:0;border-top:1px solid rgba(255,255,255,.1);padding-top:10px}
+.spec-stage{border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.02);padding:16px;min-height:180px;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.spec-row{display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:center}
+.spec-label{font-family:var(--mono);font-size:6.5px;letter-spacing:.08em;color:#7f92a4}
+.spec-tokens{display:flex;gap:4px;flex-wrap:wrap}
+.spec-token{font-family:var(--mono);font-size:9px;border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:4px 7px;color:#c9d5df;background:rgba(255,255,255,.03);transition:all .25s}
+.spec-token.accepted{border-color:rgba(13,122,114,.55);background:rgba(13,122,114,.18);color:#8ee6d2}
+.spec-token.rejected{border-color:rgba(232,85,47,.55);background:rgba(232,85,47,.16);color:#ff9b7c;text-decoration:line-through}
+.spec-token.verified{border-color:rgba(255,255,255,.3);color:#fff}
+.spec-result{font-size:9.5px;line-height:1.65;color:#899cad;border-top:1px solid rgba(255,255,255,.1);padding-top:9px;min-height:31px}
+.spec-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px}
+.comp-copy h3{font-family:var(--display);font-size:20px;letter-spacing:-.02em;margin:0 0 8px}
+.comp-copy p{font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 8px}
+
+/* ============ RELIABILITY ============ */
+.rel-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);gap:16px;align-items:stretch}
+.rel-console{display:flex;flex-direction:column;padding-bottom:14px}
+.cluster-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:14px 16px 8px}
+.node{aspect-ratio:1;border-radius:3px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.07);position:relative;transition:background .25s,border-color .25s,transform .25s}
+.node.busy{background:rgba(13,122,114,.3);border-color:rgba(13,122,114,.45)}
+.node.reserved{background:rgba(255,255,255,.16)}
+.node.failed{background:rgba(232,85,47,.5);border-color:rgba(232,85,47,.8);transform:scale(.82)}
+.node.recovering{background:rgba(255,177,92,.45);border-color:rgba(255,177,92,.7)}
+.job-box{margin:4px 16px 0;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:11px;background:rgba(255,255,255,.025)}
+.job-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:6.5px;color:#8295a7;margin-bottom:7px}
+.job-top b{color:#fff;font-size:10px;font-weight:400}
+.job-track{position:relative;height:9px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.job-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#0d7a72,#6de0cd);width:0%;transition:width .5s}
+.job-check{position:absolute;top:-2px;bottom:-2px;width:1px;background:rgba(255,177,92,.8);left:40%;transition:left .4s}
+.job-meta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:6.2px;color:#708496;margin-top:7px}
+.job-meta b{color:#c3d0dc;font-weight:400}
+.rel-panel{display:flex;flex-direction:column}
+.rel-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:7.5px;color:var(--dim)}
+.rel-label b{color:var(--orange-dark);font-weight:500}
+.rel-metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-top:13px}
+.rel-metrics div{padding:8px 10px;background:rgba(21,26,33,.022)}
+.rel-metrics span{display:block;font-family:var(--mono);font-size:6px;color:var(--dim)}
+.rel-metrics b{display:block;font-family:var(--mono);font-size:13px;color:var(--body);font-weight:400;margin-top:1px}
+.rel-note{font-size:10px;line-height:1.7;color:var(--dim);margin:12px 0 0;border-top:1px solid var(--line);padding-top:9px}
+
+/* ============ LLMOPS ============ */
+.ops-loop{display:flex;align-items:stretch;gap:5px;margin-bottom:14px}
+.ops-step{flex:1;min-width:0;border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:10px 10px 9px;text-align:left;display:flex;flex-direction:column;gap:1px;transition:all .17s;position:relative;box-shadow:0 2px 8px rgba(21,26,33,.025)}
+.ops-step span{font-family:var(--mono);font-size:6.5px;color:var(--dim)}
+.ops-step b{font-size:11px;color:var(--body);font-weight:600}
+.ops-step small{font-family:var(--mono);font-size:6px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ops-step:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.ops-step.active{border-color:rgba(13,122,114,.45);background:var(--teal-soft);box-shadow:0 4px 14px rgba(13,122,114,.08)}
+.ops-step.active b{color:var(--teal)}
+.ops-step.active span{color:var(--teal)}
+.ops-arrow{font-family:var(--mono);color:var(--orange);font-size:11px;display:flex;align-items:center;padding:0 1px;opacity:.8}
+.ops-detail h3{font-family:var(--display);font-size:20px;letter-spacing:-.02em;margin:0 0 7px}
+.ops-detail p{font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 10px;max-width:850px}
+.ops-artifacts{display:flex;gap:5px;flex-wrap:wrap}
+.ops-artifacts span{font-family:var(--mono);font-size:7px;color:var(--teal);border:1px solid rgba(13,122,114,.2);background:rgba(13,122,114,.045);border-radius:4px;padding:3px 6px}
+.release-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);gap:16px;align-items:stretch}
+.release-console{display:flex;flex-direction:column;padding-bottom:14px}
+.release-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;padding:13px 16px 3px}
+.release-controls label{font-family:var(--mono);font-size:7px;color:#8295a7;display:flex;justify-content:space-between;gap:8px}
+.release-controls label b{color:#ffb397;font-weight:400}
+.release-controls input{margin:0}
+.release-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:13px 16px 0}
+.release-step{border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:7px 6px;font-family:var(--mono);font-size:6.5px;line-height:1.45;color:#7d91a3;background:rgba(255,255,255,.025);transition:all .25s}
+.release-step span{display:block;font-size:5.8px;color:#5f7588;margin-bottom:2px}
+.release-step.on{border-color:rgba(255,177,92,.5);background:rgba(255,177,92,.1);color:#ffd2a6}
+.release-step.pass{border-color:rgba(13,122,114,.5);background:rgba(13,122,114,.15);color:#8ee6d2}
+.release-step.fail{border-color:rgba(232,85,47,.55);background:rgba(232,85,47,.15);color:#ff9b7c}
+.release-result{font-size:10px;line-height:1.65;color:#899cad;border-top:1px solid rgba(255,255,255,.1);margin:13px 16px 0;padding-top:10px;min-height:46px}
+.release-result b{color:#fff;font-weight:500}
+.release-actions{display:flex;gap:6px;padding:10px 16px 0}
+.release-actions .btn{padding:7px 11px;font-size:10px;background:transparent;border-color:rgba(255,255,255,.16);color:#c2cfdb;box-shadow:none}
+.release-actions .btn-primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.release-copy h3{font-family:var(--display);font-size:20px;letter-spacing:-.02em;margin:0 0 8px}
+.release-copy p{font-size:11.5px;line-height:1.9;color:var(--muted);margin:0}
+.release-note{font-size:10px;line-height:1.7;color:var(--dim);border-top:1px solid var(--line);padding-top:9px;margin-top:11px}
+</style>
+
+<style>
+/* ============ OBSERVABILITY / COST ============ */
+.obs-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr);gap:16px;align-items:stretch}
+.obs-console{display:flex;flex-direction:column;padding-bottom:12px}
+.obs-modes{padding:11px 16px 0}
+.obs-metrics{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid rgba(255,255,255,.1);margin-top:11px}
+.obs-metrics div{padding:10px 14px;border-right:1px solid rgba(255,255,255,.08)}
+.obs-metrics div:last-child{border-right:0}
+.obs-metrics span{display:block;font-family:var(--mono);font-size:6.2px;letter-spacing:.04em;color:#7d91a3;white-space:nowrap}
+.obs-metrics b{font-family:var(--mono);font-size:21px;font-weight:400;color:#fff;line-height:1.3;transition:color .2s}
+.obs-metrics small{font-family:var(--mono);font-size:6px;color:#6a7e91;margin-left:2px}
+.obs-metrics.alert b{color:#ff9b7c}
+.obs-chart{padding:10px 14px 0}
+.obs-chart svg{width:100%;height:auto;display:block}
+.obs-area{fill:rgba(13,122,114,.13)}
+.obs-line{fill:none;stroke:#55ccb9;stroke-width:2;stroke-linecap:round;transition:d .4s}
+.obs-slo{stroke:rgba(255,177,92,.6);stroke-dasharray:4 4;stroke-width:1}
+.obs-slo-label{fill:#c59462;font-family:var(--mono);font-size:6.5px}
+.obs-alert{margin:8px 16px 0;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:7px;line-height:1.6;color:#8da0b1;background:rgba(255,255,255,.025)}
+.obs-alert.bad{color:#ffb397;border-color:rgba(232,85,47,.35);background:rgba(232,85,47,.08)}
+.obs-foot{display:flex;justify-content:space-between;gap:8px;border-top:1px solid rgba(255,255,255,.1);margin-top:9px;padding:8px 16px 0;font-family:var(--mono);font-size:6px;color:#6a7e91}
+.cost-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.cost-card h3{font-family:var(--display);font-size:21px;letter-spacing:-.02em;margin:0 0 6px}
+.cost-intro{font-size:10.5px;line-height:1.75;color:var(--muted);margin:0 0 14px}
+.cost-controls{display:flex;flex-direction:column;gap:2px}
+.cost-controls label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:7px;color:var(--dim);margin-top:7px}
+.cost-controls label b{color:var(--orange-dark);font-weight:500}
+.cost-controls input{margin:0}
+.cost-result{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:14px 0 11px;padding:12px 0 10px;text-align:left}
+.cost-result span{display:block;font-family:var(--mono);font-size:6px;letter-spacing:.1em;color:var(--dim)}
+.cost-result b{display:block;font-family:var(--mono);font-size:34px;font-weight:400;line-height:1.15;color:var(--green,#0d7a72);margin:2px 0}
+.cost-result small{font-family:var(--mono);font-size:6.5px;color:var(--dim)}
+.cost-bench{display:flex;flex-direction:column;gap:7px;margin-bottom:11px}
+.cost-bench div{display:grid;grid-template-columns:60px 1fr 42px;gap:7px;align-items:center}
+.cost-bench span{font-family:var(--mono);font-size:6.5px;color:var(--dim)}
+.cost-bench i{display:block;height:5px;border-radius:99px;background:linear-gradient(90deg,var(--teal),#62d2c2);transition:width .3s}
+.cost-bench b{font-family:var(--mono);font-size:7px;color:var(--body);font-weight:400;text-align:right}
+.cost-note{font-family:var(--mono);font-size:6.5px;line-height:1.7;color:var(--dim);border-top:1px solid var(--line);padding-top:8px;margin:auto 0 0}
+
+/* ============ MATRIX / DECISION ============ */
+.matrix-viz{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 3px 14px rgba(21,26,33,.04)}
+.matrix-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.matrix-head h3{font-family:var(--display);font-size:21px;letter-spacing:-.02em;margin:0}
+.matrix-table{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.matrix-row{display:grid;grid-template-columns:minmax(160px,1.05fr) 100px minmax(0,1.2fr);gap:12px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:10.5px;align-items:center;transition:background .15s}
+.matrix-row:last-child{border-bottom:0}
+.matrix-row:hover{background:rgba(232,85,47,.025)}
+.matrix-row span{color:var(--muted);line-height:1.5}
+.matrix-row span:first-child{color:var(--body)}
+.matrix-header{background:rgba(21,26,33,.03);font-family:var(--mono);font-size:6.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.matrix-header span{color:var(--dim)!important;font-family:var(--mono);font-size:6.5px}
+.own{font-family:var(--mono);font-size:7.5px;font-weight:500;border-radius:4px;padding:2px 5px;width:max-content;border:1px solid}
+.own.infra{color:var(--orange-dark);border-color:rgba(232,85,47,.25);background:rgba(232,85,47,.055)}
+.own.ops{color:var(--teal);border-color:rgba(13,122,114,.25);background:rgba(13,122,114,.055)}
+.own.shared{color:var(--blue);border-color:rgba(30,91,215,.2);background:rgba(30,91,215,.045)}
+.matrix-row.hidden{display:none}
+.matrix-foot{font-family:var(--mono);font-size:6.5px;color:var(--dim);margin-top:9px;line-height:1.6}
+.decision{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.decision-step{display:grid;grid-template-columns:30px 1fr 58px;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--paper)}
+.decision-step .ds-n{font-family:var(--mono);font-size:8px;color:var(--orange);border:1px solid rgba(232,85,47,.22);border-radius:4px;width:24px;height:24px;display:grid;place-items:center}
+.decision-step b{display:block;font-size:11px;color:var(--ink);font-weight:600;margin-bottom:2px}
+.decision-step p{font-size:9.5px;line-height:1.6;color:var(--muted);margin:0}
+.decision-step em{font-family:var(--mono);font-size:6.5px;font-style:normal;letter-spacing:.1em;color:var(--orange-dark);text-align:right}
+
+/* ============ QUIZ / GLOSSARY / READING ============ */
+.quiz{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--paper)}
+.quiz-q{padding:14px 16px;border-bottom:1px solid var(--line)}
+.quiz-q:last-of-type{border-bottom:0}
+.q-meta{font-family:var(--mono);font-size:6.5px;letter-spacing:.1em;color:var(--dim);margin-bottom:5px}
+.q-text{font-size:12px;line-height:1.65;color:var(--body);margin-bottom:8px;font-weight:500}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.q-opt{text-align:left;border:1px solid var(--line);background:rgba(21,26,33,.018);color:var(--muted);border-radius:5px;font-size:10px;line-height:1.5;padding:6px 8px;transition:all .15s}
+.q-opt:hover{border-color:var(--line-strong);color:var(--ink)}
+.q-opt.correct{border-color:rgba(13,122,114,.45);background:var(--teal-soft);color:var(--teal)}
+.q-opt.wrong{border-color:rgba(232,85,47,.45);background:var(--orange-soft);color:var(--orange-dark)}
+.q-opt:disabled{cursor:default}
+.q-fb{font-family:var(--mono);font-size:7px;line-height:1.65;color:var(--dim);margin-top:6px;display:none}
+.q-fb.show{display:block}
+.q-fb b{color:var(--teal);font-weight:500}
+.quiz-score{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line);background:rgba(21,26,33,.018)}
+.quiz-score span{font-family:var(--mono);font-size:7px;color:var(--dim)}
+.quiz-score b{color:var(--orange-dark);font-weight:500}
+.glossary{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.glossary details{border:1px solid var(--line);border-radius:6px;background:var(--paper);padding:0 11px}
+.glossary summary{cursor:pointer;padding:8px 0;font-family:var(--mono);font-size:8px;color:var(--body);list-style:none;display:flex;justify-content:space-between;gap:8px}
+.glossary summary::-webkit-details-marker{display:none}
+.glossary summary::after{content:"+";color:var(--dim)}
+.glossary details[open] summary::after{content:"−"}
+.glossary p{margin:0 0 9px;font-size:9.5px;line-height:1.68;color:var(--muted)}
+.reading-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:8px}
+.read-card{border:1px solid var(--line);border-radius:9px;padding:13px;background:var(--paper)}
+.read-card span{font-family:var(--mono);font-size:7px;color:var(--orange)}
+.read-card h4{font-size:11px;margin:3px 0 4px;font-weight:600}
+.read-card p{font-size:9.5px;line-height:1.65;color:var(--muted);margin:0}
+footer{padding:42px 0 54px;border-top:1px solid var(--line)}
+footer .f-line{width:30px;height:2px;background:var(--orange);margin-bottom:16px}
+footer p{font-family:var(--mono);font-size:7.5px;line-height:1.9;color:var(--dim);letter-spacing:.03em;margin:0}
+footer a{color:var(--muted)}
+#toTop{position:fixed;right:22px;bottom:22px;z-index:70;width:36px;height:36px;border-radius:50%;border:1px solid var(--line-strong);background:rgba(251,249,244,.92);color:var(--muted);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;font-family:var(--mono);font-size:11px}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{transform:translateY(-2px);color:var(--orange)}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:1180px){
+  .wrap{padding:0 38px}
+  .hero-inner{gap:36px;grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr)}
+  .hero h1 .en{font-size:clamp(56px,6.8vw,80px)}
+  .obs-layout,.cost-card{grid-template-columns:minmax(0,1.1fr) minmax(290px,.9fr)}
+}
+@media (max-width:1100px){
+  :root{--sidebar-w:0px}
+  .sidebar{transform:translateX(-100%);width:260px;box-shadow:20px 0 60px rgba(16,22,30,.25)}
+  .sidebar.open{transform:none}
+  .topbar{left:0;padding:0 22px 0 64px}
+  .menu-btn{display:grid;place-items:center}
+  main{margin-left:0}
+  .hero{padding-top:48px}
+  .hero-inner{grid-template-columns:1fr;min-height:auto;gap:38px}
+  .sysmap{max-width:580px}
+  .stack-layout,.par-layout,.mem-layout,.serve-layout,.comp-layout,.rel-layout,.obs-layout,.release-layout{grid-template-columns:1fr}
+  .def-grid{grid-template-columns:1fr 1fr}
+  .roof-layout{grid-template-columns:1fr}
+  .roof-panel{min-height:0}
+  .mem-controls{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+  .mem-fixed{grid-column:1/-1}
+  .par-panel{min-height:0}
+}
+@media (max-width:900px){
+  .def-grid{grid-template-columns:1fr}
+  .grid3,.reading-grid{grid-template-columns:1fr 1fr}
+  .ops-loop{flex-wrap:wrap}
+  .ops-arrow{display:none}
+  .ops-step{flex:1 0 calc(50% - 5px)}
+  .ops-step:last-child{flex-basis:100%}
+  .sort-actions{grid-template-columns:1fr}
+  .q-opts{grid-template-columns:1fr}
+  .matrix-row{grid-template-columns:minmax(120px,1fr) 78px minmax(0,1.1fr);gap:8px;font-size:9.5px}
+}
+@media (max-width:760px){
+  .wrap{padding:0 20px}
+  .chapter{padding:62px 0 68px}
+  .ch-head{grid-template-columns:1fr;gap:8px;margin-bottom:28px}
+  .ch-index{flex-direction:row;align-items:center;gap:9px;padding-top:0}
+  .ch-index b{font-size:26px}
+  .ch-index .rule{width:26px}
+  .ch-index span:last-child{font-size:6.5px}
+  .ch-head h2{font-size:clamp(27px,7.2vw,34px)}
+  .hero{padding:32px 0 52px}
+  .hero h1 .en{font-size:clamp(48px,14vw,66px)}
+  .hero h1 .ops{font-size:clamp(40px,11.5vw,58px)}
+  .hero-sub{font-size:18px}
+  .hero-lead{font-size:14px}
+  .hero-meta{gap:5px}
+  .meta-pill{font-size:7.5px;padding:4px 8px}
+  .sysmap .sm-body{grid-template-columns:1fr 42px 1fr;min-height:330px;padding:14px 12px}
+  .sm-node{padding:7px 8px}
+  .sm-node b{font-size:9px}
+  .sm-node span{font-size:6px}
+  .sm-bridge .tag{font-size:5.5px;padding:1px 3px}
+  .sm-bridge .bl{display:none}
+  .sm-foot{font-size:5.5px}
+  .stack-body{padding:12px}
+  .stack-layer{grid-template-columns:24px 1fr;padding:7px 8px}
+  .sl-d{display:none}
+  .stack-detail{padding:17px}
+  .lat-row{grid-template-columns:95px 1fr 52px}
+  .roof-read{grid-template-columns:1fr 1fr 1fr;gap:5px}
+  .roof-read b{font-size:17px}
+  .roof-read small{font-size:5.5px}
+  .roof-presets{grid-template-columns:1fr;}
+  .roof-presets button{text-align:left}
+  .mem-controls{grid-template-columns:1fr;padding:16px}
+  .mem-fixed{grid-template-columns:1fr auto 1fr auto}
+  .mem-read b{font-size:30px}
+  .mem-legend{grid-template-columns:1fr}
+  .serve-top{flex-direction:column;align-items:flex-start}
+  .serve-metrics{grid-template-columns:1fr 1fr}
+  .serve-metrics div:last-child{grid-column:1/-1}
+  .quant-layout{grid-template-columns:1fr;min-height:0}
+  .quant-visual{min-height:160px}
+  .bit-grid{min-height:70px}
+  .spec-row{grid-template-columns:48px 1fr}
+  .cluster-grid{gap:3px;padding:10px 12px 6px}
+  .job-box{margin:4px 12px 0}
+  .ops-step{flex:1 0 100%;display:grid;grid-template-columns:20px 1fr auto;gap:5px;align-items:center;padding:8px 10px}
+  .ops-step small{grid-column:2}
+  .ops-step span{grid-row:1/3}
+  .ops-step b{font-size:11px}
+  .ops-detail{padding:16px}
+  .release-controls{grid-template-columns:1fr;padding:11px 12px 0}
+  .release-steps{grid-template-columns:1fr 1fr;padding:11px 12px 0}
+  .release-result,.release-actions{margin-left:12px;margin-right:12px}
+  .matrix-row{grid-template-columns:1fr;gap:3px;padding:8px 10px}
+  .matrix-row .own{grid-row:2}
+  .matrix-row span:last-child{grid-column:1;font-size:9px}
+  .matrix-header{display:none}
+  .decision-step{grid-template-columns:26px 1fr;gap:8px}
+  .decision-step em{grid-column:2;text-align:left}
+  .glossary{grid-template-columns:1fr}
+  .reading-grid{grid-template-columns:1fr}
+  .obs-metrics{grid-template-columns:1fr 1fr}
+  .obs-metrics div:nth-child(2){border-right:0}
+  .obs-metrics div:nth-child(n+3){border-top:1px solid rgba(255,255,255,.08)}
+  .obs-foot{flex-direction:column;gap:2px}
+  .cost-result b{font-size:29px}
+  .sort-task{font-size:18px;min-height:64px}
+  .footer{padding:32px 0 44px}
+}
+@media (max-width:480px){
+  .hero h1 .en{font-size:46px}
+  .hero h1 .ops{font-size:38px}
+  .hero h1 .cross{font-size:30px}
+  .sysmap .sm-body{grid-template-columns:1fr;gap:8px;min-height:0}
+  .sm-col.ops{display:none}
+  .sm-bridge{display:none}
+  .hero-note{font-size:7px}
+  .grid2,.grid3,.def-grid{grid-template-columns:1fr}
+  .sort-actions{grid-template-columns:1fr}
+  .roof-read{grid-template-columns:1fr 1fr}
+  .roof-read div:last-child{grid-column:1/-1}
+  .stack-layer{grid-template-columns:20px 1fr}
+  .ops-step{flex-basis:100%}
+  .obs-metrics b{font-size:18px}
+  .matrix-head{align-items:flex-start}
+  .matrix-head .seg{width:100%;flex-wrap:wrap}
+  .matrix-head .seg button{flex:1}
+  .paged-blocks{grid-template-columns:repeat(8,1fr)}
+  .q-opts{grid-template-columns:1fr}
+  .glossary{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+
+<style>
+.roof-band{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.roof-band-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:6.5px;color:var(--muted);margin-bottom:5px}
+.roof-band-track{position:relative;height:6px;border-radius:99px;background:linear-gradient(90deg,rgba(13,122,114,.35),rgba(21,26,33,.08) 60%,rgba(232,85,47,.3))}
+.roof-band-track::after{content:"";position:absolute;left:72.6%;top:-3px;bottom:-3px;width:1px;background:var(--line-strong)}
+.roof-band-track i{position:absolute;top:-2px;width:10px;height:10px;border-radius:50%;background:var(--orange);border:2px solid var(--paper);box-shadow:0 0 0 1px var(--orange);transition:left .25s}
+.roof-rule{display:flex;gap:8px;align-items:baseline;border-top:1px solid var(--line);padding-top:8px;margin-top:9px;font-size:9px;line-height:1.55;color:var(--dim)}
+.roof-rule b{font-family:var(--mono);font-size:6px;letter-spacing:.1em;color:var(--orange-dark);white-space:nowrap}
+.mem-hint{font-family:var(--mono);font-size:6.5px;line-height:1.7;color:#708496;border-top:1px solid rgba(255,255,255,.1);padding:9px 18px 0;margin-top:9px}
+.cluster-grid{grid-template-columns:repeat(12,1fr)}
+.rel-extra{border-top:1px solid var(--line);padding-top:9px;margin-top:10px}
+.rel-extra b{font-family:var(--mono);font-size:6.5px;color:var(--teal);letter-spacing:.02em;display:block;margin-bottom:3px}
+.rel-extra p{font-size:9.5px;line-height:1.65;color:var(--dim);margin:0}
+.release-controls{grid-template-columns:1fr 1fr;gap:8px 16px}
+.release-field{display:flex;flex-direction:column;gap:1px;min-width:0}
+.release-field label{display:flex;justify-content:space-between;gap:6px}
+.bit-grid{grid-template-columns:repeat(32,1fr);gap:2px;align-items:end;min-height:70px;height:70px}
+.bit-cell{width:100%;height:60px}
+@media (max-width:760px){
+  .release-controls{grid-template-columns:1fr}
+  .cluster-grid{grid-template-columns:repeat(12,1fr)}
+  .roof-band-label{font-size:5.5px}
+  .rel-extra p{font-size:9px}
+}
+</style>
+
+<style>
+.sm-shared{position:relative;z-index:2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.09);padding:7px 15px;font-family:var(--mono);font-size:6.3px;letter-spacing:.03em;color:#7f92a4}
+.sm-shared b{color:#ff9b7c;font-weight:500;letter-spacing:.08em;margin-right:2px}
+.sm-shared span{border:1px solid rgba(255,255,255,.09);border-radius:3px;padding:1px 4px}
+.ch-head h2{text-wrap:balance}
+br.mobile-break{display:none}
+@media (max-width:480px){
+  br.mobile-break{display:block}
+  .sysmap .sm-body{grid-template-columns:1fr;gap:10px;min-height:0}
+  .sm-col.ops{display:flex}
+  .sm-col.ops .sm-label{text-align:left}
+  .sm-col.ops .sm-node::before{left:0;right:auto}
+  .sm-bridge{display:flex;flex-direction:row;justify-content:center;align-items:center;gap:8px;padding:4px 0}
+  .sm-bridge .bl{display:block;writing-mode:horizontal-tb;transform:none;font-size:6px;color:#7f92a4}
+  .sm-bridge .line{width:44px;min-height:1px;height:1px;flex:0 0 44px;background:linear-gradient(90deg,var(--orange),var(--teal))}
+  .sm-bridge .dot{display:none}
+}
+</style>
+
+</head>
+<body>
+<a class="skip-link" href="#ch00">跳到正文</a>
+<div id="progress" aria-hidden="true"></div>
+<button class="menu-btn" id="menuBtn" aria-label="打开章节目录" aria-expanded="false">☰</button>
+<div class="scrim" id="scrim"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="章节目录">
+  <a href="#top" class="brand">
+    <div class="brand-mark"><span>AI<br>OPS</span></div>
+    <div>
+      <div class="brand-name">AI Infra × LLMOps</div>
+      <div class="brand-sub">systems field guide</div>
+    </div>
+  </a>
+  <div class="nav-label">学习路径 / 11 章</div>
+  <nav class="side-nav" id="sideNav">
+    <a href="#ch00" data-nav="ch00"><span class="num">00</span>两个词，一张图</a>
+    <a href="#ch01" data-nav="ch01"><span class="num">01</span>AI Infra 全栈</a>
+    <a href="#ch02" data-nav="ch02"><span class="num">02</span>GPU 与 Roofline</a>
+    <a href="#ch03" data-nav="ch03"><span class="num">03</span>从单卡到万卡</a>
+    <a href="#ch04" data-nav="ch04"><span class="num">04</span>显存账本</a>
+    <a href="#ch05" data-nav="ch05"><span class="num">05</span>推理服务引擎</a>
+    <a href="#ch06" data-nav="ch06"><span class="num">06</span>压缩与加速</a>
+    <a href="#ch07" data-nav="ch07"><span class="num">07</span>可靠性与调度</a>
+    <a href="#ch08" data-nav="ch08"><span class="num">08</span>LLMOps 生命周期</a>
+    <a href="#ch09" data-nav="ch09"><span class="num">09</span>观测、成本与容量</a>
+    <a href="#ch10" data-nav="ch10"><span class="num">10</span>决策指南与自测</a>
+  </nav>
+  <div class="side-foot"><p><b>单文件 · 离线可读</b><br>11 章 / 12 个模拟<br>从 GPU 到产品</p></div>
+</aside>
+
+<header class="topbar" id="topbar">
+  <div class="crumb"><span class="dot"></span><span id="crumbText">00 · 两个词，一张图</span></div>
+  <div class="top-actions">
+    <button class="top-chip" id="randomBtn" type="button">↯ 随机一章</button>
+    <a class="top-chip" href="#ch10">自测 →</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="top">
+    <div class="wrap hero-inner">
+      <div>
+        <div class="eyebrow">systems field guide · from silicon to product</div>
+        <h1><span class="en">AI INFRA</span><span class="row2"><span class="cross">×</span><span class="ops">LLMOps</span></span></h1>
+        <p class="hero-sub">一个建跑道，一个管<span>航班</span>。</p>
+        <p class="hero-lead">
+          AI Infra 让计算跑得<b>快、稳、省</b>；LLMOps 让模型产品<b>可评测、可发布、可持续变好</b>。
+          它们不是竞品，而是同一套系统的两层。这份教程用可交互的系统图、账本和模拟器，把两层都讲清楚。
+        </p>
+        <div class="hero-meta">
+          <span class="meta-pill"><i></i>11 章 · 约 45 分钟</span>
+          <span class="meta-pill"><i></i>12 个可玩模拟</span>
+          <span class="meta-pill"><i></i>GPU → 集群 → 推理 → 产品</span>
+        </div>
+        <div class="hero-cta">
+          <a href="#ch00" class="btn btn-primary">先分清两个词 <span class="arrow">↓</span></a>
+          <a href="#ch05" class="btn btn-ghost">直接看推理引擎</a>
+        </div>
+        <div class="hero-note">不需要先懂 Kubernetes，也不需要会训模型；从一台 GPU 开始。</div>
+      </div>
+
+      <div>
+        <div class="sysmap" id="sysmap" data-focus="both">
+          <div class="sm-head">
+            <span class="sm-dot"></span>
+            <span class="sm-title">SYSTEM MAP / LIVE</span>
+            <div class="sm-modes" id="mapModes">
+              <button class="active" data-focus="both" type="button">BOTH</button>
+              <button data-focus="infra" type="button">INFRA</button>
+              <button data-focus="ops" type="button">OPS</button>
+            </div>
+          </div>
+          <div class="sm-body">
+            <div class="sm-col infra">
+              <div class="sm-label">AI INFRA · 栈</div>
+              <div class="sm-node"><b>GPU / HBM</b><span>FLOPS · 显存带宽 · 容量</span></div>
+              <div class="sm-node"><b>NVLink / RDMA</b><span>节点内 / 节点间通信</span></div>
+              <div class="sm-node"><b>Cluster Scheduler</b><span>队列 · 拓扑 · 抢占 · 容错</span></div>
+              <div class="sm-node"><b>Serving Runtime</b><span>KV Cache · batching · 量化</span></div>
+            </div>
+            <div class="sm-bridge">
+              <span class="bl">SHARED BOUNDARY</span>
+              <div class="line"><span class="dot"></span></div>
+            </div>
+            <div class="sm-col ops">
+              <div class="sm-label">LLMOPS · 循环</div>
+              <div class="sm-node"><b>Eval / 评测</b><span>数据集 · 回归 · 人工偏好</span></div>
+              <div class="sm-node"><b>Deploy / 发布</b><span>版本 · 灰度 · 回滚</span></div>
+              <div class="sm-node"><b>Observe / 观测</b><span>质量 · 延迟 · 成本 · 安全</span></div>
+              <div class="sm-node"><b>Feedback / 反馈</b><span>bad case · 标注 · 迭代</span></div>
+            </div>
+          </div>
+          <div class="sm-shared"><b>SHARED SLO</b><span>latency</span><span>cost</span><span>quality</span><span>reliability</span></div>
+          <div class="sm-foot"><span><b>one model</b> · two operating questions</span><span>栈 vs 生命周期</span></div>
+        </div>
+        <div class="hero-note">切换 INFRA / OPS，看看同一张图里谁在负责什么。</div>
+      </div>
+    </div>
+  </section>
+
+    <!-- ================= 00 DISTINCTION ================= -->
+  <section class="chapter" id="ch00">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>00</b><span class="rule"></span><span>ORIENTATION</span></div>
+        <div>
+          <div class="kicker">Start here · 先把两个词分开</div>
+          <h2>AI Infra 是栈，LLMOps 是生命周期</h2>
+          <p class="ch-lead">它们经常出现在同一场面试、同一张架构图里，却不是同一层东西。<b>AI Infra</b> 关心“计算怎么跑得快、稳、省”；<b>LLMOps</b> 关心“模型产品怎么评测、发布、观测、迭代”。一个偏系统，一个偏运营；在部署与观测处深度重叠。</p>
+        </div>
+      </div>
+
+      <div class="def-grid">
+        <article class="def-card infra reveal">
+          <div class="def-top"><span class="def-no">01</span><span class="def-kind">THE SUBSTRATE</span></div>
+          <h3>AI Infra<span>AI Infrastructure</span></h3>
+          <p class="def-one">让大规模计算<strong>跑得起来</strong>，并且跑得便宜。</p>
+          <p class="def-body">GPU / 加速器、显存与带宽、节点内互联、集群网络、存储、调度器、训练框架、推理引擎、容错与利用率。它横跨传统 ML 和大模型，不是 LLM 专属。</p>
+          <div class="def-questions">
+            <span>算力够不够？</span><span>通信是不是瓶颈？</span><span>显存放得下吗？</span><span>GPU 利用率多少？</span><span>故障后多久恢复？</span><span>每百万 token 多少钱？</span>
+          </div>
+          <div class="def-tags"><span class="tag orange">throughput</span><span class="tag orange">latency</span><span class="tag orange">utilization</span><span class="tag orange">reliability</span></div>
+        </article>
+
+        <article class="def-card ops reveal d1">
+          <div class="def-top"><span class="def-no">02</span><span class="def-kind">THE LIFECYCLE</span></div>
+          <h3>LLMOps<span>LLM Operations</span></h3>
+          <p class="def-one">让模型产品<strong>持续变好</strong>，并且变得可解释、可回滚。</p>
+          <p class="def-body">Prompt / 模型 / 数据集版本、离线评测、发布门禁、灰度、线上质量与安全观测、反馈闭环、事故响应。它是 MLOps 在 LLM 应用上的 specialization。</p>
+          <div class="def-questions">
+            <span>回答真的变好了吗？</span><span>这个 prompt 能追溯吗？</span><span>评测覆盖了哪些场景？</span><span>线上有没有漂移？</span><span>出问题能回滚吗？</span><span>用户反馈去哪了？</span>
+          </div>
+          <div class="def-tags"><span class="tag teal">quality</span><span class="tag teal">eval</span><span class="tag teal">release</span><span class="tag teal">feedback</span></div>
+        </article>
+      </div>
+
+      <div class="callout reveal">
+        <div class="co-label">The one-sentence difference</div>
+        <p><b>AI Infra 是“发电厂、道路和工厂设备”，LLMOps 是“车队调度、质检和客服”。</b>没有前者，模型跑不起来；没有后者，模型跑得再快，也可能在线上给出错误、过时或不合规的答案。</p>
+      </div>
+
+      <div class="viz mt-24 reveal">
+        <div class="viz-head">
+          <div class="viz-title">Sort it · 这条任务应该归谁？</div>
+          <div class="viz-hint">6 个场景 · 选完即时反馈</div>
+        </div>
+        <div class="viz-body">
+          <div class="sort-game">
+            <div class="sort-top">
+              <span class="sort-count" id="sortCount">SCENARIO 01 / 06</span>
+              <span class="sort-score">SCORE <b id="sortScore">0 / 0</b></span>
+            </div>
+            <div class="sort-task" id="sortTask">正在加载场景…</div>
+            <div class="sort-actions" id="sortActions">
+              <button type="button" data-answer="infra"><b>AI Infra</b><span>算力、通信、显存、吞吐、可靠性</span></button>
+              <button type="button" data-answer="ops"><b>LLMOps</b><span>评测、版本、发布、质量、反馈</span></button>
+              <button type="button" data-answer="shared"><b>共同边界</b><span>部署、观测、成本、SLO 共同负责</span></button>
+            </div>
+            <div class="sort-feedback" id="sortFeedback">先读场景，再选一个归属。有些任务没有单一主人。</div>
+            <div class="sort-bottom">
+              <div class="sort-dots" id="sortDots"></div>
+              <button class="btn btn-ghost" id="sortNext" type="button" disabled>下一题 →</button>
+            </div>
+          </div>
+        </div>
+        <div class="viz-foot"><span>判断口诀：先问“算力/带宽/显存”，还是先问“质量/版本/回滚”</span><span>部署、观测、成本通常需要共同负责</span></div>
+      </div>
+
+      <div class="grid2 mt-20">
+        <div class="card reveal">
+          <div class="mini-label">Common confusion</div>
+          <h3>“LLMOps 就是 prompt engineering？”</h3>
+          <p>不是。Prompt 只是被管理的一个版本化产物。LLMOps 还要处理评测集、发布门禁、线上质量、安全策略、反馈闭环与事故响应；它更接近“LLM 产品的持续交付与运营”。</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="mini-label">Relationship</div>
+          <h3>MLOps ⊃ LLMOps，但 AI Infra 在更下面</h3>
+          <p>MLOps 是更广的 ML 生命周期实践；LLMOps 是它在生成式模型上的特化。AI Infra 不是生命周期，而是支撑所有 ML 工作负载的技术栈。两者是不同维度，不是二选一。</p>
+        </div>
+      </div>
+
+      <div class="callout teal reveal">
+        <div class="co-label">How to use this guide</div>
+        <p>接下来的 <b>01–07</b> 章主要潜入 AI Infra：从 GPU、Roofline、并行、显存、推理到可靠性与调度；<b>08–09</b> 章转向 LLMOps：发布、评测、观测与单位成本；<b>10</b> 章把边界、职责和自测收束成一张决策图。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 01 STACK ================= -->
+  <section class="chapter" id="ch01">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>01</b><span class="rule"></span><span>THE STACK</span></div>
+        <div>
+          <div class="kicker">AI Infra · 从硅到产品</div>
+          <h2>AI Infra 不是一堆 GPU，而是一条数据通路</h2>
+          <p class="ch-lead">一块 GPU 只有在电力、互联、存储、调度和运行时都接对的时候，才会变成可用算力。任何一层掉链子，上层看到的都只是“慢”和“不稳定”。</p>
+        </div>
+      </div>
+
+      <div class="prose reveal">
+        <p>AI Infra 的职责可以概括成一句话：<strong>把模型计算的物理约束，翻译成上层可用的吞吐、延迟、可靠性和成本。</strong>它不只是采购硬件，也包括让多张卡协同、让任务排队、让故障恢复、让推理请求被高效地拼在一起。</p>
+      </div>
+
+      <div class="stack-layout mt-24 reveal">
+        <div class="console stack-console">
+          <div class="viz-head"><div class="viz-title">The stack · 点一层看它在管什么</div><span class="viz-hint">点击切换</span></div>
+          <div class="stack-body" id="stackBody">
+            <button class="stack-layer" data-layer="5" type="button"><span class="sl-n">05</span><span class="sl-t">产品 / API</span><span class="sl-d">边界层 · SLO</span></button>
+            <button class="stack-layer" data-layer="4" type="button"><span class="sl-n">04</span><span class="sl-t">训练 / 推理 Runtime</span><span class="sl-d">框架 · 引擎 · kernel</span></button>
+            <button class="stack-layer" data-layer="3" type="button"><span class="sl-n">03</span><span class="sl-t">集群调度</span><span class="sl-d">队列 · 拓扑 · 抢占</span></button>
+            <button class="stack-layer" data-layer="2" type="button"><span class="sl-n">02</span><span class="sl-t">网络 / 存储</span><span class="sl-d">NVLink · RDMA · 并行文件系统</span></button>
+            <button class="stack-layer" data-layer="1" type="button"><span class="sl-n">01</span><span class="sl-t">GPU / 加速器</span><span class="sl-d">SM · Tensor Core · HBM</span></button>
+            <button class="stack-layer" data-layer="0" type="button"><span class="sl-n">00</span><span class="sl-t">数据中心</span><span class="sl-d">供电 · 冷却 · 机柜</span></button>
+          </div>
+          <div class="stack-foot"><span class="stack-pulse"></span><span>数据包自下而上；任何一跳都可能成为瓶颈</span></div>
+        </div>
+        <div class="stack-detail card" id="stackDetail">
+          <div class="mini-label" id="stackKicker">LAYER 05 · BOUNDARY</div>
+          <h3 id="stackTitle">产品 / API</h3>
+          <p id="stackDesc">用户只感知到“快不快、准不准、贵不贵”。这一层把产品 SLO 翻译成 infra 的吞吐/延迟预算，也把 infra 的现实约束翻译回产品取舍。</p>
+          <div class="stack-metrics" id="stackMetrics">
+            <span><b>关注</b>p95 延迟 · 可用性 · 单位成本</span>
+            <span><b>典型</b>API gateway · 限流 · 计费</span>
+            <span><b>崩掉时</b>超时、排队、账单失控</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Compute</div><h3>算力不是吞吐</h3><p>FLOPS 是峰值；真实吞吐还取决于内存带宽、kernel 效率、批大小和通信。峰值利用率 100% 往往只是营销数字。</p></div>
+        <div class="card reveal d1"><div class="mini-label">Memory</div><h3>显存是硬约束</h3><p>模型、梯度、优化器状态、激活和 KV Cache 都在抢同一块 HBM。显存不够，再快的卡也只能换并行策略。</p></div>
+        <div class="card reveal d2"><div class="mini-label">Fabric</div><h3>通信会吃掉线性扩展</h3><p>多卡不是简单相加。All-Reduce、All-to-All、流水线气泡会把“8 卡 = 8 倍”打成“8 卡 = 4.7 倍”。</p></div>
+      </div>
+
+      <div class="lat-card mt-24 reveal">
+        <div class="lat-head"><div><div class="mini-label">Latency hierarchy</div><h3>不同层级的访问，差了好几个数量级</h3></div><span class="mono">log scale · 示意</span></div>
+        <div class="lat-bars" id="latBars"></div>
+        <p class="lat-note">这就是为什么“把数据搬来搬去”常常比“算”更贵。AI Infra 的很多设计，本质是在减少数据移动。</p>
+      </div>
+
+      <div class="callout reveal">
+        <div class="co-label">Infra lens</div>
+        <p><b>看到一个新模型，不要只问“多少参数”。</b>还要问：权重多大、每 token 要读多少 HBM、跨卡通信多少、batch 能开多大、故障恢复要多久。这些问题决定了它能不能变成产品。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 02 ROOFLINE ================= -->
+  <section class="chapter" id="ch02">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>02</b><span class="rule"></span><span>PERFORMANCE</span></div>
+        <div>
+          <div class="kicker">AI Infra · 性能的第一性原理</div>
+          <h2>Roofline：<br class="mobile-break">你到底卡在算力，<br class="mobile-break">还是卡在搬数据？</h2>
+          <p class="ch-lead">同一块 GPU，跑不同的算子，瓶颈可能完全不同。Roofline 用一条简单的上界告诉你：<b>可达性能 = min(峰值算力, 算术强度 × 内存带宽)</b>。</p>
+        </div>
+      </div>
+
+      <div class="prose reveal">
+        <p><strong>算术强度（arithmetic intensity）</strong>是每读/写 1 字节数据，做了多少次浮点运算（FLOP/Byte）。强度低，算得少、搬得多，就会被内存带宽卡住；强度高，搬得少、算得多，才会接近峰值算力。两条线的交点叫 <strong>ridge point</strong>，是这台机器的“性格分界”。</p>
+      </div>
+
+      <div class="roof-layout mt-24 reveal">
+        <div class="console roof-console">
+          <div class="viz-head"><div class="viz-title">Roofline model · 移动工作点</div><span class="viz-hint">log-log · H100 量级示意</span></div>
+          <div class="roof-chart-wrap">
+            <svg class="roof-svg" id="roofSvg" viewBox="0 0 660 390" role="img" aria-label="Roofline 性能模型图">
+              <defs>
+                <linearGradient id="roofGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#e8552f"></stop>
+                  <stop offset="1" stop-color="#ffb15c"></stop>
+                </linearGradient>
+              </defs>
+              <g class="roof-grid" id="roofGrid"></g>
+              <path class="roof-curve" id="roofCurve" d=""></path>
+              <line class="roof-ridge" id="roofRidge" x1="0" y1="30" x2="0" y2="330"></line>
+              <circle class="roof-dot" id="roofDot" cx="0" cy="0" r="6"></circle>
+              <g class="roof-axis" id="roofAxis"></g>
+              <text class="roof-label" x="330" y="378" text-anchor="middle">ARITHMETIC INTENSITY · FLOP / BYTE →</text>
+              <text class="roof-label" transform="translate(18 210) rotate(-90)" text-anchor="middle">TFLOPS ↑</text>
+            </svg>
+          </div>
+          <div class="roof-foot"><span id="roofMode">MEMORY-BOUND</span><span id="roofRidgeLabel">ridge ≈ 148 FLOP/Byte</span></div>
+        </div>
+
+        <div class="roof-panel">
+          <div class="roof-read">
+            <div><span>当前工作点</span><b id="roofAIVal">1.0</b><small>FLOP / Byte</small></div>
+            <div><span>可达算力</span><b id="roofPerfVal">3.4</b><small>TFLOPS</small></div>
+            <div><span>峰值占比</span><b id="roofPctVal">0.3%</b><small>of 494 TFLOPS</small></div>
+          </div>
+          <label class="roof-control" for="roofAI">算术强度 <b id="roofAILabel">1.0</b></label>
+          <input id="roofAI" type="range" min="0" max="100" step="1" value="0" aria-label="算术强度">
+          <div class="roof-presets">
+            <button type="button" data-ai="1">LLM decode<br><span>AI ≈ 1</span></button>
+            <button type="button" data-ai="32">小 batch GEMM<br><span>AI ≈ 32</span></button>
+            <button type="button" data-ai="512">prefill / 训练<br><span>AI ≈ 512</span></button>
+          </div>
+          <p class="roof-explain" id="roofExplain">解码阶段每读一个权重只做很少的乘加，几乎一定被 HBM 带宽卡住。增大 batch 能提高复用，但不改变单请求的访存本质。</p>
+          <div class="roof-band">
+            <div class="roof-band-label"><span>memory-bound</span><span>ridge</span><span>compute-bound</span></div>
+            <div class="roof-band-track"><i id="roofBandDot"></i></div>
+          </div>
+          <div class="roof-rule"><b>RULE OF THUMB</b><span>AI 低于 ridge：先省字节；高于 ridge：先把 Tensor Core 喂满。</span></div>
+          <div class="roof-note"><b>参数假设</b> FP16 稠密峰值 494 TFLOPS · HBM 3.35 TB/s · ridge = 494/3.35 ≈ 148 FLOP/Byte。数字为量级示意。</div>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Decode</div><h3>内存带宽受限</h3><p>自回归每生成一个 token，要把大量权重从 HBM 读一遍。算术强度接近 1，GPU 算力大量闲置，所以 KV Cache、量化和 batching 才关键。</p></div>
+        <div class="card reveal d1"><div class="mini-label">Prefill / Training</div><h3>更容易算力受限</h3><p>大矩阵乘可以复用权重和激活，算术强度高，能接近峰值。此时要关心 Tensor Core 利用率、kernel 融合和通信重叠。</p></div>
+        <div class="card reveal d2"><div class="mini-label">The lever</div><h3>提高复用，或减少搬运</h3><p>batch、tiling、算子融合提高数据复用；量化、稀疏、KV 压缩减少字节数。两条路都在把工作点往右上角推。</p></div>
+      </div>
+
+      <div class="callout warn reveal">
+        <div class="co-label">Do not memorize one number</div>
+        <p><b>Roofline 是上界，不是实测。</b>真实性能还会被 kernel 启动、调度、通信、cache 命中、Tensor Core 形状约束拉低。它的价值是帮你判断“优化方向”：先搬数据，还是先算得更满。</p>
+      </div>
+    </div>
+  </section>
+
+    <!-- ================= 03 PARALLELISM ================= -->
+  <section class="chapter" id="ch03">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>03</b><span class="rule"></span><span>SCALE OUT</span></div>
+        <div>
+          <div class="kicker">AI Infra · 从一张卡到一万张卡</div>
+          <h2>并行不是“多插几张卡”，而是切分计算与通信</h2>
+          <p class="ch-lead">模型太大、数据太多、单卡太慢，于是我们把计算切到多张 GPU 上。切法不同，显存、通信和实现复杂度就不同。核心问题只有一个：<b>每次切分，换来多少显存节省，付出多少通信？</b></p>
+        </div>
+      </div>
+
+      <div class="prose reveal">
+        <p>数据并行（DP）复制模型、切分 batch；张量并行（TP）切分同一层的矩阵；流水并行（PP）把不同层放到不同卡上，像工厂流水线；ZeRO 则把优化器状态、梯度、参数分片，减少每张卡的冗余。大模型训练通常是 <strong>DP × TP × PP</strong> 的组合，MoE 还会加上专家并行（EP）。</p>
+      </div>
+
+      <div class="par-layout mt-24 reveal">
+        <div class="console par-console">
+          <div class="viz-head">
+            <div class="viz-title">Partition lab · 8 张 GPU 怎么切</div>
+            <div class="seg" id="parModes">
+              <button class="active" data-par="dp" type="button">DP</button>
+              <button data-par="tp" type="button">TP</button>
+              <button data-par="pp" type="button">PP</button>
+              <button data-par="zero" type="button">ZeRO-3</button>
+            </div>
+          </div>
+          <div class="par-canvas"><svg id="parSvg" viewBox="0 0 760 330" role="img" aria-label="并行策略下的 GPU 拓扑与数据切分"></svg></div>
+          <div class="par-legend"><span><i class="dot-orange"></i>数据 / 参数分片</span><span><i class="dot-teal"></i>通信路径</span><span>GPU 0–7 · 逻辑拓扑</span></div>
+        </div>
+        <div class="par-panel card">
+          <div class="mini-label" id="parKicker">STRATEGY · DP</div>
+          <h3 id="parName">数据并行 Data Parallel</h3>
+          <p id="parDesc">每张 GPU 都保留完整模型，但读不同的数据 batch。反向传播后，用 All-Reduce 汇总梯度，让 8 份模型保持一致。</p>
+          <div class="par-metrics">
+            <div><span>单卡显存</span><div class="bar"><i id="parMem"></i></div><b id="parMemVal">高</b></div>
+            <div><span>通信量</span><div class="bar"><i id="parComm"></i></div><b id="parCommVal">中</b></div>
+            <div><span>实现复杂度</span><div class="bar"><i id="parCplx"></i></div><b id="parCplxVal">低</b></div>
+          </div>
+          <div class="par-tip" id="parTip"><b>适合：</b>模型能放进单卡，想扩大 batch 与吞吐。TP 通常放在 NVLink 域内，DP / PP 跨节点。</div>
+          <div class="tagrow"><span class="tag orange">all-reduce</span><span class="tag">replica</span><span class="tag">batch split</span></div>
+        </div>
+      </div>
+
+      <div class="grid2 mt-20">
+        <div class="ring-card reveal">
+          <div class="ring-head"><div><div class="mini-label">Collective</div><h3>Ring All-Reduce 为什么快？</h3></div><button class="icon-btn" id="ringPlay" type="button">▶ 播放</button></div>
+          <div class="ring-stage">
+            <svg id="ringSvg" viewBox="0 0 360 200" aria-hidden="true">
+              <circle cx="180" cy="100" r="62" fill="none" stroke="rgba(21,26,33,.13)" stroke-dasharray="3 4"></circle>
+              <g id="ringNodes"></g>
+              <g id="ringChunks"></g>
+            </svg>
+          </div>
+          <p>每个 GPU 只和左右邻居交换数据，把全量 All-Reduce 拆成 <b>2(N−1)</b> 步。它不减少总通信量，但把流量均匀摊到环上，避免单点拥堵。</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="mini-label">The topology rule</div>
+          <h3>把通信放在最快的那条线上</h3>
+          <p><b style="color:var(--ink)">TP</b> 的 All-Reduce / All-Gather 每层都发生，尽量放在 NVLink 域内；<b style="color:var(--ink)">PP</b> 的激活传递跨 stage；<b style="color:var(--ink)">DP</b> 的梯度 All-Reduce 可以跨节点，但会吃满 RDMA。</p>
+          <div class="formula">world_size = DP × TP × PP × EP</div>
+          <p>如果拓扑和并行策略不匹配，GPU 会一边算一边等网络；把“8 卡线性加速”打成 4 倍甚至更低。</p>
+          <div class="tagrow"><span class="tag teal">NVLink</span><span class="tag blue">InfiniBand / RDMA</span><span class="tag">topology-aware</span></div>
+        </div>
+      </div>
+
+      <div class="callout reveal">
+        <div class="co-label">The trade-off</div>
+        <p><b>并行不是免费的。</b>每多切一刀，就多一次通信、多一个失败点、多一层调度复杂度。好的并行策略不是“切得最细”，而是让计算、显存、通信三者同时落在可接受区间。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 04 MEMORY ================= -->
+  <section class="chapter" id="ch04">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>04</b><span class="rule"></span><span>MEMORY</span></div>
+        <div>
+          <div class="kicker">AI Infra · 显存是第一硬约束</div>
+          <h2>显存账本：<br class="mobile-break">参数之外，还有三座大山</h2>
+          <p class="ch-lead">“7B 模型只要 14GB”只算对了权重。训练时还要存梯度、优化器状态和激活；推理时还要存 KV Cache。显存账本算不清，batch 开不大、并行切不对、OOM 就会反复出现。</p>
+        </div>
+      </div>
+
+      <div class="mem-layout mt-24 reveal">
+        <div class="mem-controls">
+          <div class="mem-group">
+            <div class="mini-label">Model size</div>
+            <div class="seg mem-p" id="memP">
+              <button data-p="1" type="button">1B</button>
+              <button class="active" data-p="7" type="button">7B</button>
+              <button data-p="13" type="button">13B</button>
+              <button data-p="70" type="button">70B</button>
+            </div>
+          </div>
+          <div class="mem-group">
+            <div class="mini-label">Precision</div>
+            <div class="seg" id="memPrec"><button class="active" data-prec="bf16" type="button">BF16</button><button data-prec="fp8" type="button">FP8</button></div>
+          </div>
+          <div class="mem-group">
+            <div class="mini-label">ZeRO stage</div>
+            <div class="seg" id="memZero"><button class="active" data-zero="0" type="button">0</button><button data-zero="1" type="button">1</button><button data-zero="2" type="button">2</button><button data-zero="3" type="button">3</button></div>
+          </div>
+          <div class="mem-group mem-slider">
+            <label for="memBatch">Batch size <b id="memBatchVal">2</b></label>
+            <input id="memBatch" type="range" min="1" max="8" step="1" value="2">
+          </div>
+          <div class="mem-group mem-slider">
+            <label for="memSeq">Sequence length <b id="memSeqVal">2048</b></label>
+            <input id="memSeq" type="range" min="512" max="8192" step="512" value="2048">
+          </div>
+          <div class="mem-fixed"><span>GPU 数量</span><b>8</b><span>单卡容量</span><b>80 GB</b></div>
+        </div>
+
+        <div class="mem-console console">
+          <div class="viz-head"><div class="viz-title">Per-GPU memory ledger</div><span class="viz-hint">量级估算 · 不是精确 profiler</span></div>
+          <div class="mem-read">
+            <div><span>每卡需要</span><b id="memTotal">—</b><small>GB</small></div>
+            <div class="mem-status" id="memStatus">计算中…</div>
+          </div>
+          <div class="mem-stack-wrap">
+            <div class="mem-stack" id="memStack">
+              <i class="ms weights" id="msWeights"></i><i class="ms grads" id="msGrads"></i><i class="ms opt" id="msOpt"></i><i class="ms act" id="msAct"></i>
+            </div>
+            <div class="mem-80" id="mem80"><span>80 GB 上限</span></div>
+          </div>
+          <div class="mem-legend" id="memLegend"></div>
+          <div class="mem-formula" id="memFormula">16P bytes / 8 + activations</div>
+          <div class="mem-hint">若超 80GB：先 ZeRO-2/3 与 activation checkpointing，再考虑 TP 或更多 GPU。</div>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Weights + Gradients</div><h3>模型本身</h3><p>BF16 下权重约 2P bytes，梯度再一份 2P。70B 模型光这两项就约 280GB，单卡已经放不下。</p></div>
+        <div class="card reveal d1"><div class="mini-label">Optimizer states</div><h3>最容易被忽略的大头</h3><p>Adam 的 m、v 和 FP32 master weights 常占 12P bytes。ZeRO-1 首先分片的就是它，收益最大。</p></div>
+        <div class="card reveal d2"><div class="mini-label">Activations</div><h3>随 batch × seq 增长</h3><p>激活取决于层数、序列长度、batch 和 checkpointing 策略。长上下文训练时，它往往比参数更先爆。</p></div>
+      </div>
+
+      <div class="callout warn reveal">
+        <div class="co-label">Inference is different</div>
+        <p><b>推理没有梯度和优化器状态，但有 KV Cache。</b>上下文越长、并发越高，KV Cache 越像“第二组模型权重”。第 05 章会看到它如何决定推理服务的 batch 和吞吐。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 05 SERVING ================= -->
+  <section class="chapter" id="ch05">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>05</b><span class="rule"></span><span>SERVING</span></div>
+        <div>
+          <div class="kicker">AI Infra · 推理引擎</div>
+          <h2>连续批处理：让 GPU 不再等最慢的那个请求</h2>
+          <p class="ch-lead">推理服务不是“一次算一个请求”。把多个请求拼成 batch 能提高吞吐，但静态 batch 会被最长的请求拖住。连续批处理在任意请求结束时立刻补位，把 GPU 的空闲时间压到最低。</p>
+        </div>
+      </div>
+
+      <div class="serve-layout mt-24 reveal">
+        <div class="console serve-console">
+          <div class="viz-head">
+            <div class="viz-title">Serving simulator · 4 个 slot</div>
+            <div class="seg" id="serveModes"><button class="active" data-mode="static" type="button">静态 batch</button><button data-mode="continuous" type="button">连续 batch</button></div>
+          </div>
+          <div class="serve-top">
+            <div class="serve-legend" id="serveLegend"></div>
+            <div class="serve-actions"><button class="icon-btn" id="servePlay" type="button">▶ 播放</button><button class="icon-btn" id="serveReset" type="button">重置</button></div>
+          </div>
+          <div class="serve-timeline-wrap">
+            <div class="serve-slots" id="serveSlots"></div>
+            <div class="serve-playhead" id="servePlayhead"></div>
+          </div>
+          <div class="serve-axis" id="serveAxis"></div>
+          <div class="serve-metrics">
+            <div><span>完成时间</span><b id="serveTime">—</b><small>ticks</small></div>
+            <div><span>GPU 利用率</span><b id="serveUtil">—</b><small>slot occupancy</small></div>
+            <div><span>平均等待</span><b id="serveWait">—</b><small>ticks</small></div>
+          </div>
+        </div>
+
+        <div class="serve-copy card">
+          <div class="mini-label">Why it matters</div>
+          <h3>吞吐与延迟不是同一个指标</h3>
+          <p>静态 batch 追求“把一次矩阵乘做大”，但短请求必须陪跑长请求，尾延迟变差。连续批处理让新请求在 tick 边界插入，<span style="color:var(--ink)">GPU 利用率更高，P95 延迟更低</span>。</p>
+          <p>代价是调度器要管理每个序列的 KV Cache、位置和生命周期；这也是 vLLM、SGLang、TensorRT-LLM 等推理引擎的核心战场。</p>
+          <div class="serve-note"><b>PagedAttention：</b>把 KV Cache 切成固定大小的 page，按需分配，像操作系统管理虚拟内存。它减少碎片和预留，让更多序列同时驻留。</div>
+          <div class="tagrow"><span class="tag orange">continuous batching</span><span class="tag">KV cache</span><span class="tag teal">PagedAttention</span></div>
+        </div>
+      </div>
+
+      <div class="paged-card mt-20 reveal">
+        <div class="paged-head"><div><div class="mini-label">KV cache allocator</div><h3>连续批处理的前提：KV Cache 要能“按页”管理</h3></div><span class="mono">示意 · 不是实际 block size</span></div>
+        <div class="paged-blocks" id="pagedBlocks"></div>
+        <p>右图把 3 个序列的 KV 页交错放进显存池：短序列不必预留长序列的空间，结束后立即归还页。没有 PagedAttention，碎片和过度预留会先于算力耗尽显存。</p>
+      </div>
+
+      <div class="callout reveal">
+        <div class="co-label">Serving lens</div>
+        <p><b>用户感知的是 P95，不是平均吞吐。</b>一个推理引擎要同时优化：首 token 延迟、每 token 延迟、吞吐、显存、公平性和成本。批处理只是其中一把旋钮。</p>
+      </div>
+    </div>
+  </section>
+
+    <!-- ================= 06 COMPRESSION ================= -->
+  <section class="chapter" id="ch06">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>06</b><span class="rule"></span><span>ACCELERATE</span></div>
+        <div>
+          <div class="kicker">AI Infra · 推理加速</div>
+          <h2>压缩与投机：用更少的字节，换更快的 token</h2>
+          <p class="ch-lead">推理的瓶颈常常不是“算不动”，而是“搬不动”和“等太久”。量化减少每个权重占用的字节，投机解码让一次大模型前向验证多个草稿 token，蒸馏则把能力搬到更小的学生模型。</p>
+        </div>
+      </div>
+
+      <div class="comp-layout mt-24 reveal">
+        <div class="console comp-console">
+          <div class="viz-head">
+            <div class="viz-title">Acceleration lab</div>
+            <div class="seg" id="compModes"><button class="active" data-comp="quant" type="button">量化</button><button data-comp="spec" type="button">投机解码</button></div>
+          </div>
+
+          <div class="comp-panel active" data-panel="quant">
+            <div class="quant-layout">
+              <div class="quant-visual">
+                <div class="quant-vtitle">WEIGHT FOOTPRINT · 32 VALUES</div>
+                <div class="bit-grid" id="bitGrid"></div>
+                <div class="quant-blabel" id="bitLabel">FP16 · 2 bytes / weight</div>
+              </div>
+              <div class="quant-side">
+                <div class="seg" id="quantModes"><button class="active" data-q="fp16" type="button">FP16</button><button data-q="int8" type="button">INT8</button><button data-q="int4" type="button">INT4</button></div>
+                <div class="quant-metrics">
+                  <div><span>显存 footprint</span><b id="qMem">100%</b><div class="qbar"><i id="qMemBar" style="width:100%"></i></div></div>
+                  <div><span>相对吞吐</span><b id="qSpeed">1.0×</b><div class="qbar teal"><i id="qSpeedBar" style="width:36%"></i></div></div>
+                  <div><span>质量风险</span><b id="qQuality">低</b><div class="qbar blue"><i id="qQualityBar" style="width:18%"></i></div></div>
+                </div>
+                <p class="quant-note" id="quantNote">FP16/BF16 是安全默认；INT8 常用于权重或激活，INT4 更激进，需要 GPTQ / AWQ 等后训练量化与校准数据。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="comp-panel" data-panel="spec">
+            <div class="spec-stage">
+              <div class="spec-row"><span class="spec-label">DRAFT</span><div class="spec-tokens" id="specDraft"></div></div>
+              <div class="spec-row"><span class="spec-label">TARGET</span><div class="spec-tokens" id="specTarget"></div></div>
+              <div class="spec-result" id="specResult">点击“验证”，让目标模型一次检查 4 个草稿 token。</div>
+            </div>
+            <div class="spec-controls">
+              <button class="algo-btn" id="specPlay" type="button">▶ 验证一轮</button>
+              <span class="tag teal" id="specSpeed">ACCEPTED 0 / 4</span>
+              <span class="tag">不改变目标模型分布（在正确实现下）</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="comp-copy card">
+          <div class="mini-label">Speed is not free</div>
+          <h3>三种加速，三种代价</h3>
+          <p><b style="color:var(--ink)">量化</b>：把权重/激活压到更低位宽，减少 HBM 读写，通常直接提升 decode 吞吐；代价是精度、校准和 kernel 支持。</p>
+          <p><b style="color:var(--ink)">投机解码</b>：小 draft 模型快速起草，大模型并行验证；草稿命中率越高收益越大，草稿模型本身也占显存。</p>
+          <p><b style="color:var(--ink)">蒸馏</b>：用大模型教小模型，把能力迁移到更便宜的学生模型；适合固定任务，但上限受学生容量限制。</p>
+          <div class="tagrow"><span class="tag orange">INT8 / INT4</span><span class="tag">GPTQ / AWQ</span><span class="tag teal">speculative decoding</span><span class="tag">distillation</span></div>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Quantization</div><h3>先量化权重，还是激活？</h3><p>权重更容易离线量化；激活是动态的，需要校准和 scale。W8A8 / W4A16 是常见组合，能否加速取决于 GPU 是否有对应低比特 kernel。</p></div>
+        <div class="card reveal d1"><div class="mini-label">Speculative</div><h3>草稿命中率决定收益</h3><p>如果 draft 模型和 target 分布差太远，验证后大量拒绝，反而浪费算力。它适合“简单续写多、难 token 少”的工作负载。</p></div>
+        <div class="card reveal d2"><div class="mini-label">Distillation</div><h3>把大模型装进小模型</h3><p>学生模型学的是老师的输出分布或中间表示。它可以显著降低部署成本，但需要高质量数据和再训练，不是免费午餐。</p></div>
+      </div>
+
+      <div class="callout teal reveal">
+        <div class="co-label">Measure, don't assume</div>
+        <p><b>所有加速都要在真实 workload 上测 P95 和单位成本。</b>量化可能让某些算子变慢；投机在低 batch 下才明显；蒸馏会改变能力边界。AI Infra 的优化目标是端到端指标，不是某个 kernel 的峰值。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 07 RELIABILITY ================= -->
+  <section class="chapter" id="ch07">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>07</b><span class="rule"></span><span>RELIABILITY</span></div>
+        <div>
+          <div class="kicker">AI Infra · 万卡训练的真正难点</div>
+          <h2>可靠性：GPU 会坏，任务不能从头再来</h2>
+          <p class="ch-lead">在万卡规模上，硬件故障不是“例外”，而是日常。真正重要的指标不是“从没坏过”，而是 <b>goodput</b>：扣掉故障、重启、等待和排队之后，集群到底交付了多少有效训练时间。</p>
+        </div>
+      </div>
+
+      <div class="prose reveal">
+        <p>大模型训练通常要持续数天到数月。一个节点掉线、一次 ECC 错误、一条网络抖动，都可能让整个任务停住。Checkpoint 把模型状态定期写到存储；故障发生后，任务从最近的 checkpoint 恢复，而不是从第 0 步开始。恢复越快、checkpoint 越聪明，goodput 越高。</p>
+      </div>
+
+      <div class="rel-layout mt-24 reveal">
+        <div class="console rel-console">
+          <div class="viz-head"><div class="viz-title">Cluster health · 48 nodes</div><span class="viz-hint" id="relStatus">HEALTHY</span></div>
+          <div class="cluster-grid" id="clusterGrid"></div>
+          <div class="job-box">
+            <div class="job-top"><span class="mono">TRAINING JOB · 128 GPUs</span><b id="jobPct">0%</b></div>
+            <div class="job-track"><i id="jobFill"></i><span class="job-check" id="jobCheck"></span></div>
+            <div class="job-meta"><span>最近 checkpoint: <b id="jobCkpt">—</b></span><span>故障损失: <b id="jobLost">—</b></span></div>
+          </div>
+        </div>
+        <div class="rel-panel card">
+          <div class="mini-label">Checkpoint policy</div>
+          <label class="rel-label" for="relInterval">Checkpoint 间隔 <b id="relIntervalVal">8 min</b></label>
+          <input id="relInterval" type="range" min="2" max="20" step="1" value="8">
+          <div class="rel-metrics">
+            <div><span>故障时刻</span><b>70%</b></div>
+            <div><span>回滚损失</span><b id="relLost">—</b></div>
+            <div><span>恢复耗时</span><b>3 min</b></div>
+            <div><span>Goodput</span><b id="relGoodput">—</b></div>
+          </div>
+          <button class="btn btn-primary" id="relFail" type="button" style="width:100%;margin-top:12px">注入一次故障</button>
+          <p class="rel-note">间隔越短，损失越小，但 checkpoint 本身也消耗带宽和存储。实际系统还要考虑异步 checkpoint、分层存储和拓扑感知恢复。</p>
+          <div class="tagrow"><span class="tag orange">checkpoint</span><span class="tag teal">elastic training</span><span class="tag blue">gang scheduling</span><span class="tag">spot / preemptible</span></div>
+          <div class="rel-extra"><b>Goodput = 有效训练时间 / 总墙钟时间</b><p>一次 70% 处的故障，如果最近 checkpoint 在 64%，就损失 6% 的训练；恢复还要时间。缩短间隔能减少回滚，但会增加 I/O 与存储成本。</p></div>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Failure</div><h3>故障是分布，不是事件</h3><p>GPU、网卡、光模块、电源、存储都会坏。规模越大，MTBF 越短；系统必须假设“总会有东西坏”，而不是祈祷不出错。</p></div>
+        <div class="card reveal d1"><div class="mini-label">Recovery</div><h3>恢复时间是成本</h3><p>重启、重新加载 checkpoint、重建通信组、重新 warmup 都要时间。恢复 5 分钟和 50 分钟，对 goodput 的影响完全不同。</p></div>
+        <div class="card reveal d2"><div class="mini-label">Scheduling</div><h3>抢占与碎片</h3><p>Spot 实例便宜但会被回收；gang scheduling 保证整组资源同时到位；拓扑感知调度避免把通信频繁的卡放到远处。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 08 LLMOPS ================= -->
+  <section class="chapter" id="ch08">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>08</b><span class="rule"></span><span>LLMOPS</span></div>
+        <div>
+          <div class="kicker">LLMOps · 从模型到产品</div>
+          <h2>LLMOps 不是工具，<br class="mobile-break">而是一圈反馈回路</h2>
+          <p class="ch-lead">模型上线不是终点，而是数据开始变脏、用户开始越界、prompt 开始漂移的起点。LLMOps 管理的是一条闭环：<b>版本 → 评测 → 发布 → 观测 → 反馈 → 下一版</b>。</p>
+        </div>
+      </div>
+
+      <div class="ops-loop reveal">
+        <button class="ops-step active" data-step="0" type="button"><span>01</span><b>数据 / Prompt</b><small>版本与契约</small></button>
+        <span class="ops-arrow">→</span>
+        <button class="ops-step" data-step="1" type="button"><span>02</span><b>Eval</b><small>离线 + 回归</small></button>
+        <span class="ops-arrow">→</span>
+        <button class="ops-step" data-step="2" type="button"><span>03</span><b>Deploy</b><small>灰度与回滚</small></button>
+        <span class="ops-arrow">→</span>
+        <button class="ops-step" data-step="3" type="button"><span>04</span><b>Observe</b><small>质量 / 成本 / 安全</small></button>
+        <span class="ops-arrow">→</span>
+        <button class="ops-step" data-step="4" type="button"><span>05</span><b>Feedback</b><small>bad case 与标注</small></button>
+      </div>
+
+      <div class="ops-detail card reveal" id="opsDetail">
+        <div class="mini-label" id="opsKicker">STAGE 01 · INPUT CONTRACT</div>
+        <h3 id="opsTitle">数据 / Prompt：把“感觉”变成版本</h3>
+        <p id="opsDesc">系统提示、few-shot 示例、RAG 模板、工具定义、模型版本都要可追溯。每次变更应带一个可复现的版本号，而不是“我昨天改了一下”。</p>
+        <div class="ops-artifacts" id="opsArtifacts"><span>prompt registry</span><span>dataset snapshot</span><span>model pin</span><span>eval set</span></div>
+      </div>
+
+      <div class="release-layout mt-20 reveal">
+        <div class="release-console console">
+          <div class="viz-head"><div class="viz-title">Release gate · 发布演练</div><span class="viz-hint">质量 × 错误率 × 回滚</span></div>
+          <div class="release-controls">
+            <div class="release-field"><label for="relEval">离线评测分 <b id="relEvalVal">0.86</b></label><input id="relEval" type="range" min="0.5" max="1" step="0.01" value="0.86"></div>
+            <div class="release-field"><label for="relErr">Canary 错误率 <b id="relErrVal">1.2%</b></label><input id="relErr" type="range" min="0" max="10" step="0.1" value="1.2"></div>
+          </div>
+          <div class="release-steps" id="releaseSteps">
+            <div class="release-step" data-rs="0"><span>01</span>评测门禁</div>
+            <div class="release-step" data-rs="1"><span>02</span>5% 灰度</div>
+            <div class="release-step" data-rs="2"><span>03</span>在线观测</div>
+            <div class="release-step" data-rs="3"><span>04</span>决策</div>
+          </div>
+          <div class="release-result" id="releaseResult">调整参数，点击“发布 v1.3”开始演练。</div>
+          <div class="release-actions"><button class="btn btn-primary" id="relRelease" type="button">发布 v1.3</button><button class="btn btn-ghost" id="relReset" type="button">重置</button></div>
+        </div>
+        <div class="release-copy card">
+          <div class="mini-label">The gate is not a single number</div>
+          <h3>上线前，至少要问四个问题</h3>
+          <p><b style="color:var(--ink)">离线评测</b>覆盖了真实场景吗？<br><b style="color:var(--ink)">灰度</b>能按用户、租户或流量切片吗？<br><b style="color:var(--ink)">观测</b>能区分“模型错”和“检索错”吗？<br><b style="color:var(--ink)">回滚</b>能在分钟级完成吗？</p>
+          <div class="release-note">LLMOps 的核心不是“让模型上线”，而是让每一次变更都有证据、有边界、有退路。</div>
+          <div class="tagrow"><span class="tag teal">eval gate</span><span class="tag">canary</span><span class="tag orange">rollback</span><span class="tag blue">guardrail</span></div>
+        </div>
+      </div>
+
+      <div class="callout teal reveal">
+        <div class="co-label">LLMOps ≠ model training</div>
+        <p><b>LLMOps 不负责把 GPU 利用率从 60% 提到 80%，也不负责设计 All-Reduce。</b>它负责定义“什么叫好”、证明“这次变更没有变坏”、并在线上持续发现新的 bad case。它依赖 AI Infra，但不替代 AI Infra。</p>
+      </div>
+    </div>
+  </section>
+
+    <!-- ================= 09 OBSERVABILITY + ECONOMICS ================= -->
+  <section class="chapter" id="ch09">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>09</b><span class="rule"></span><span>OPERATE</span></div>
+        <div>
+          <div class="kicker">LLMOps × AI Infra · 共同仪表盘</div>
+          <h2>观测与单位成本：把“快、好、省”放进同一张表</h2>
+          <p class="ch-lead">AI Infra 看 GPU 利用率、显存、吞吐和故障；LLMOps 看回答质量、安全、用户反馈。真正做产品时，这两组指标必须在同一张仪表盘上：<b>没有质量的吞吐是浪费，没有成本意识的质量也不可持续。</b></p>
+        </div>
+      </div>
+
+      <div class="obs-layout mt-24 reveal">
+        <div class="console obs-console">
+          <div class="viz-head"><div class="viz-title">Production pulse · 一套指标</div><span class="viz-hint" id="obsModeLabel">NORMAL</span></div>
+          <div class="obs-modes"><div class="seg" id="obsModes"><button class="active" data-obs="normal" type="button">正常</button><button data-obs="incident" type="button">质量事故</button><button data-obs="surge" type="button">流量突增</button></div></div>
+          <div class="obs-metrics">
+            <div><span>P50 首 token</span><b id="obsP50">240</b><small>ms</small></div>
+            <div><span>P95 首 token</span><b id="obsP95">820</b><small>ms</small></div>
+            <div><span>错误率</span><b id="obsErr">0.8</b><small>%</small></div>
+            <div><span>评测分</span><b id="obsEval">0.86</b><small>/ 1.0</small></div>
+          </div>
+          <div class="obs-chart"><svg id="obsChart" viewBox="0 0 620 150" aria-hidden="true"><path class="obs-area" id="obsArea" d=""></path><path class="obs-line" id="obsLine" d=""></path><line class="obs-slo" x1="0" y1="42" x2="620" y2="42"></line><text class="obs-slo-label" x="612" y="36" text-anchor="end">SLO</text></svg></div>
+          <div class="obs-alert" id="obsAlert">所有指标在 SLO 内。继续观察。</div>
+          <div class="obs-foot"><span>INFRA: utilization · queue · errors</span><span>LLMOPS: quality · safety · feedback</span></div>
+        </div>
+
+        <div class="cost-card">
+          <div class="mini-label">Unit economics · 单位成本</div>
+          <h3>每百万 token 到底多少钱？</h3>
+          <p class="cost-intro">GPU 小时价除以“每小时有效 token 数”，就是最粗的推理成本。利用率越低，账单越难看。</p>
+          <div class="cost-controls">
+            <label for="costGpu">GPU 每小时成本 <b id="costGpuVal">$2.00</b></label>
+            <input id="costGpu" type="range" min="0.5" max="8" step="0.1" value="2">
+            <label for="costTps">有效 token / 秒 <b id="costTpsVal">2000</b></label>
+            <input id="costTps" type="range" min="300" max="6000" step="100" value="2000">
+            <label for="costUtil">GPU 利用率 <b id="costUtilVal">60%</b></label>
+            <input id="costUtil" type="range" min="10" max="100" step="1" value="60">
+          </div>
+          <div class="cost-result"><span>COST / 1M OUTPUT TOKENS</span><b id="costOut">$0.46</b><small id="costPerHour">≈ 4.32M tokens / GPU-hour</small></div>
+          <div class="cost-bench">
+            <div><span>你的配置</span><i id="costBarYou" style="width:46%"></i><b id="costBarYouVal">$0.46</b></div>
+            <div><span>高利用率</span><i id="costBarBest" style="width:30%"></i><b>$0.28</b></div>
+          </div>
+          <p class="cost-note">输入 token、缓存命中、批处理、量化都会改变分母；这里只算输出侧的量级。</p>
+        </div>
+      </div>
+
+      <div class="grid3 mt-20">
+        <div class="card reveal"><div class="mini-label">Infra signals</div><h3>利用率不是唯一指标</h3><p>GPU 100% 可能只是在做低效的重复计算；更重要的是有效吞吐、队列等待、P95 和每 token 成本。</p></div>
+        <div class="card reveal d1"><div class="mini-label">LLMOps signals</div><h3>质量要能切片</h3><p>整体评测分 0.86 可能掩盖某个租户、语言或意图的灾难。按场景、版本、渠道切片，才能发现真正的回归。</p></div>
+        <div class="card reveal d2"><div class="mini-label">SLO</div><h3>用错误预算做取舍</h3><p>发布速度、质量、成本不可能同时无限优化。SLO 和错误预算把“要不要上”变成可讨论的工程决策。</p></div>
+      </div>
+
+      <div class="callout warn reveal">
+        <div class="co-label">The bridge metric</div>
+        <p><b>每百万 token 成本</b>是 AI Infra 与 LLMOps 的天然桥梁：Infra 决定分母（吞吐、利用率、量化），LLMOps 决定分子（路由、缓存、上下文长度、输出长度、重试）。任何一方单独优化，都可能把账单推给另一方。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 10 DECISION GUIDE ================= -->
+  <section class="chapter" id="ch10">
+    <div class="wrap">
+      <div class="ch-head reveal">
+        <div class="ch-index"><b>10</b><span class="rule"></span><span>DECIDE</span></div>
+        <div>
+          <div class="kicker">Bring it together · 谁负责什么</div>
+          <h2>一张责任矩阵，三道自测</h2>
+          <p class="ch-lead">你不需要在每个项目里都设两个团队。但你需要知道一个问题应该先找谁、用什么指标验收、失败时谁有权回滚。下面这张矩阵不是组织架构，而是排查顺序。</p>
+        </div>
+      </div>
+
+      <div class="matrix-viz reveal">
+        <div class="matrix-head">
+          <div><div class="mini-label">Responsibility matrix</div><h3>任务 → 主要归属</h3></div>
+          <div class="seg" id="matrixFilter"><button class="active" data-f="all" type="button">全部</button><button data-f="infra" type="button">Infra</button><button data-f="ops" type="button">LLMOps</button><button data-f="shared" type="button">共同</button></div>
+        </div>
+        <div class="matrix-table" id="matrixTable">
+          <div class="matrix-row matrix-header"><span>任务</span><span>归属</span><span>首先看什么指标</span></div>
+          <div class="matrix-row" data-owner="infra"><span>训练任务 OOM</span><b class="own infra">AI Infra</b><span>显存账本 · 并行切分 · 重计算</span></div>
+          <div class="matrix-row" data-owner="infra"><span>KV Cache / PagedAttention</span><b class="own infra">AI Infra</b><span>显存碎片 · batch · P95</span></div>
+          <div class="matrix-row" data-owner="infra"><span>万卡训练通信瓶颈</span><b class="own infra">AI Infra</b><span>All-Reduce 时间 · 拓扑 · 重叠</span></div>
+          <div class="matrix-row" data-owner="ops"><span>Prompt 版本与回滚</span><b class="own ops">LLMOps</b><span>版本可追溯 · 回归通过率</span></div>
+          <div class="matrix-row" data-owner="ops"><span>离线评测集与 bad case</span><b class="own ops">LLMOps</b><span>场景覆盖 · 切片分数 · 漂移</span></div>
+          <div class="matrix-row" data-owner="ops"><span>安全护栏与合规</span><b class="own ops">LLMOps</b><span>越狱率 · 拒答质量 · 审计</span></div>
+          <div class="matrix-row" data-owner="shared"><span>灰度发布与回滚</span><b class="own shared">共同</b><span>错误预算 · 变更窗口 · 可回滚</span></div>
+          <div class="matrix-row" data-owner="shared"><span>P95 延迟 SLO</span><b class="own shared">共同</b><span>队列 · 批处理 · 路由 · 模型</span></div>
+          <div class="matrix-row" data-owner="shared"><span>每百万 token 成本</span><b class="own shared">共同</b><span>吞吐 · 利用率 · 上下文 · 缓存</span></div>
+        </div>
+        <div class="matrix-foot">归属是“第一排查人”，不是“唯一负责人”。真正的线上问题通常跨两层。</div>
+      </div>
+
+      <div class="decision reveal">
+        <div class="decision-step"><span class="ds-n">01</span><div><b>问题主要在计算 / 通信 / 显存 / 调度？</b><p>先找 AI Infra。用吞吐、利用率、显存、故障恢复和单位算力成本验收。</p></div><em>INFRA</em></div>
+        <div class="decision-step"><span class="ds-n">02</span><div><b>问题主要在回答质量 / 版本 / 发布 / 反馈？</b><p>先找 LLMOps。用评测、灰度、线上质量、回滚和用户反馈验收。</p></div><em>OPS</em></div>
+        <div class="decision-step"><span class="ds-n">03</span><div><b>两边都动，或者指标互相拉扯？</b><p>设共享 SLO：延迟、成本、质量一起定预算；发布前联合评审，故障时联合值班。</p></div><em>SHARED</em></div>
+      </div>
+
+      <div class="viz mt-24 reveal">
+        <div class="viz-head"><div class="viz-title">Check yourself · 三道题</div><div class="viz-hint">选完即时反馈</div></div>
+        <div class="viz-body">
+          <div class="quiz" id="quiz">
+            <div class="quiz-q" data-answer="1">
+              <div class="q-meta">QUESTION 01 · MEMORY</div>
+              <div class="q-text">7B 模型训练时单卡 OOM，最先应该检查什么？</div>
+              <div class="q-opts">
+                <button class="q-opt" data-opt="0" type="button">把 prompt 写短一点</button>
+                <button class="q-opt" data-opt="1" type="button">显存账本、并行切分与 activation checkpointing</button>
+                <button class="q-opt" data-opt="2" type="button">换一个评测集</button>
+                <button class="q-opt" data-opt="3" type="button">增加 few-shot 示例</button>
+              </div>
+              <div class="q-fb"><b>答案：B。</b>训练 OOM 是 AI Infra 问题：先算权重、梯度、优化器状态、激活，再决定 ZeRO / TP / PP、batch 与重计算。</div>
+            </div>
+            <div class="quiz-q" data-answer="2">
+              <div class="q-meta">QUESTION 02 · LLMOPS</div>
+              <div class="q-text">新版 prompt 上线后，某类问题的错误率上升。最符合 LLMOps 的动作是？</div>
+              <div class="q-opts">
+                <button class="q-opt" data-opt="0" type="button">直接增加 GPU 数量</button>
+                <button class="q-opt" data-opt="1" type="button">重写 All-Reduce kernel</button>
+                <button class="q-opt" data-opt="2" type="button">按场景切片评测、灰度对比、必要时回滚</button>
+                <button class="q-opt" data-opt="3" type="button">把学习率调大</button>
+              </div>
+              <div class="q-fb"><b>答案：C。</b>这是模型行为与发布治理问题。先定位哪类场景回归，用评测和灰度证据决定回滚，而不是盲目加算力。</div>
+            </div>
+            <div class="quiz-q" data-answer="1">
+              <div class="q-meta">QUESTION 03 · SERVING</div>
+              <div class="q-text">首 token 延迟很高，但 GPU 利用率不高。最可能的 AI Infra 原因是？</div>
+              <div class="q-opts">
+                <button class="q-opt" data-opt="0" type="button">模型参数太少</button>
+                <button class="q-opt" data-opt="1" type="button">请求排队 / 调度 / 显存或内存带宽瓶颈</button>
+                <button class="q-opt" data-opt="2" type="button">评测集太小</button>
+                <button class="q-opt" data-opt="3" type="button">Prompt 不够礼貌</button>
+              </div>
+              <div class="q-fb"><b>答案：B。</b>“高延迟 + 低利用率”通常不是算力不足，而是请求没被及时调度、KV Cache 放不下或数据搬运卡住。</div>
+            </div>
+            <div class="quiz-score"><span>SCORE · <b id="quizScore">0</b> / 3</span><span id="quizMsg">选择上面的选项开始</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-32 reveal">
+        <div class="mini-label" style="font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--dim)">Glossary · 随手查</div>
+        <div class="glossary">
+          <details><summary>AI Infra</summary><p>支撑 AI 工作负载的硬件、网络、存储、调度、训练/推理运行时与可靠性工程。核心指标是吞吐、延迟、利用率、故障恢复与单位算力成本。</p></details>
+          <details><summary>LLMOps</summary><p>面向 LLM 产品的生命周期运营：版本、评测、发布、灰度、观测、安全、反馈与回滚。它是 MLOps 在生成式模型应用上的特化。</p></details>
+          <details><summary>MLOps / LLMOps</summary><p>MLOps 是更广的 ML 系统生命周期实践；LLMOps 是它在生成式模型应用上的特化，额外强调 prompt、评测、RAG / Agent、幻觉与安全。</p></details>
+          <details><summary>Roofline</summary><p>用算术强度与内存带宽估计性能上界的模型：可达性能 = min(峰值算力, 算术强度 × 带宽)。</p></details>
+          <details><summary>ZeRO</summary><p>把优化器状态、梯度、参数分片到多张 GPU 上，减少每卡冗余；stage 1/2/3 分别切优化器、梯度、参数。</p></details>
+          <details><summary>KV Cache</summary><p>自回归推理时缓存历史 token 的 Key/Value，避免重复计算。它随上下文长度、层数、并发增长，是推理显存的主要开销之一。</p></details>
+          <details><summary>Continuous batching</summary><p>请求在 tick 边界动态加入/退出 batch，短请求结束后立即让新请求补位，提高 GPU 利用率并降低排队。</p></details>
+          <details><summary>Goodput</summary><p>扣掉故障、重启、排队和无效计算后，集群实际交付的有效训练/服务吞吐。比“峰值利用率”更接近业务价值。</p></details>
+          <details><summary>Canary / Eval Gate</summary><p>灰度发布与发布门禁：先把新版本给一小部分流量，用评测与线上指标证明没有变坏，再扩大或回滚。</p></details>
+        </div>
+      </div>
+
+      <div class="mt-32 reveal">
+        <div class="mini-label" style="font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--dim)">Reading path · 继续深入</div>
+        <div class="reading-grid">
+          <div class="read-card"><span>01</span><h4>先把系统跑起来</h4><p>CUDA / GPU 架构、PyTorch 分布式、NCCL、Kubernetes 调度。先理解一张卡，再理解一个集群。</p></div>
+          <div class="read-card"><span>02</span><h4>读推理引擎</h4><p>vLLM 的 PagedAttention、continuous batching；SGLang 的 RadixAttention；TensorRT-LLM 的 kernel 优化。</p></div>
+          <div class="read-card"><span>03</span><h4>把 LLMOps 做成闭环</h4><p>版本化 prompt、离线评测、灰度发布、线上质量切片、bad case 回流。工具会换，闭环不会。</p></div>
+        </div>
+      </div>
+
+      <div class="callout teal reveal">
+        <div class="co-label">Three sentences to keep</div>
+        <p><b>1. AI Infra 是栈，LLMOps 是生命周期；它们在部署、观测、成本处重叠。</b><br><b>2. Infra 用吞吐/延迟/利用率/故障恢复说话，LLMOps 用评测/质量/回滚/反馈说话。</b><br><b>3. 真正成熟的产品，两边共用一套 SLO 和一张单位成本表。</b></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="f-line"></div>
+      <p>AI Infra × LLMOps · 可视化教程<br>单文件离线阅读 · 模拟与数字均为教学示意 · 方法截至 2025 年公开资料<br><a href="#top">回到顶部 ↑</a></p>
+    </div>
+  </footer>
+
+</main>
+<button id="toTop" aria-label="回到顶部">↑</button>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  /* ---------- global navigation ---------- */
+  const sections = $$("main section[id]").filter((s) => s.id !== "top");
+  const navLinks = $$(".side-nav a");
+  const crumbMap = {
+    ch00: "00 · 两个词，一张图", ch01: "01 · AI Infra 全栈", ch02: "02 · GPU 与 Roofline",
+    ch03: "03 · 从单卡到万卡", ch04: "04 · 显存账本", ch05: "05 · 推理服务引擎",
+    ch06: "06 · 压缩与加速", ch07: "07 · 可靠性与调度", ch08: "08 · LLMOps 生命周期",
+    ch09: "09 · 观测、成本与容量", ch10: "10 · 决策指南与自测"
+  };
+  let current = "";
+  let tick = false;
+  function updateUI() {
+    const y = window.scrollY;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    $("#progress").style.width = (max > 0 ? clamp(y / max * 100, 0, 100) : 0) + "%";
+    $("#topbar").classList.toggle("scrolled", y > 8);
+    $("#toTop").classList.toggle("show", y > 680);
+    let found = sections[0];
+    for (const s of sections) if (s.getBoundingClientRect().top + y <= y + 175) found = s;
+    if (found && found.id !== current) {
+      current = found.id;
+      navLinks.forEach((a) => {
+        const on = a.dataset.nav === current;
+        a.classList.toggle("active", on);
+        if (on) a.setAttribute("aria-current", "location"); else a.removeAttribute("aria-current");
+      });
+      $("#crumbText").textContent = crumbMap[current] || "";
+    }
+    tick = false;
+  }
+  window.addEventListener("scroll", () => { if (!tick) { requestAnimationFrame(updateUI); tick = true; } }, { passive: true });
+  window.addEventListener("resize", updateUI);
+  updateUI();
+
+  const sidebar = $("#sidebar"), scrim = $("#scrim"), menuBtn = $("#menuBtn");
+  function closeMenu() { sidebar.classList.remove("open"); scrim.classList.remove("show"); menuBtn.setAttribute("aria-expanded", "false"); }
+  menuBtn.addEventListener("click", () => {
+    const open = !sidebar.classList.contains("open");
+    sidebar.classList.toggle("open", open); scrim.classList.toggle("show", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  scrim.addEventListener("click", closeMenu);
+  navLinks.forEach((a) => a.addEventListener("click", () => { if (innerWidth <= 1100) closeMenu(); }));
+  $("#randomBtn").addEventListener("click", () => {
+    const pool = sections.filter((s) => s.id !== current);
+    pool[Math.floor(Math.random() * pool.length)].scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
+  });
+  $("#toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" }));
+
+  if ("IntersectionObserver" in window && !reduced) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    }), { threshold: .06, rootMargin: "0px 0px -40px 0px" });
+    $$(".reveal").forEach((el) => io.observe(el));
+  } else $$(".reveal").forEach((el) => el.classList.add("in"));
+
+  function syncRange(el) {
+    const min = Number(el.min || 0), max = Number(el.max || 100), v = Number(el.value);
+    el.style.setProperty("--fill", ((v - min) / (max - min) * 100) + "%");
+  }
+  $$('input[type="range"]').forEach((el) => { syncRange(el); el.addEventListener("input", () => syncRange(el)); });
+
+  /* ---------- hero map ---------- */
+  const sysmap = $("#sysmap");
+  $$("#mapModes button").forEach((btn) => btn.addEventListener("click", () => {
+    $$("#mapModes button").forEach((b) => b.classList.toggle("active", b === btn));
+    sysmap.dataset.focus = btn.dataset.focus;
+    sysmap.className = "sysmap" + (btn.dataset.focus === "both" ? "" : " focus-" + btn.dataset.focus);
+  }));
+
+  /* ---------- 00 sort game ---------- */
+  const SORT_TASKS = [
+    { task: "把 70B 模型切到 8 张 GPU 上训练，尽量避免 OOM。", answer: "infra", why: "先算显存账本，再决定 ZeRO / TP / PP。这是 AI Infra 的切分问题。" },
+    { task: "给新版 prompt 跑 200 条回归评测，确认没有变差。", answer: "ops", why: "评测集与回归门禁属于 LLMOps；它回答“模型行为是否变好”。" },
+    { task: "把首 token P95 从 2s 降到 800ms，同时不增加 30% 成本。", answer: "shared", why: "延迟与成本同时被 infra 的批处理/调度和 ops 的路由/上下文策略影响。" },
+    { task: "设计 KV Cache 的分页分配与请求淘汰策略。", answer: "infra", why: "这是推理引擎的内存管理与调度，属于 AI Infra。" },
+    { task: "线上发现某租户回答事实错误率上升，决定是否回滚。", answer: "ops", why: "质量切片、灰度证据与回滚决策属于 LLMOps。" },
+    { task: "评估 FP8 量化后，推理成本下降能否覆盖质量损失。", answer: "shared", why: "量化是 infra 手段，质量损失与验收是 ops 责任；需要共同决策。" }
+  ];
+  let sortIdx = 0, sortScore = 0, sortAnswered = 0, sortDone = false;
+  const sortTask = $("#sortTask"), sortActions = $("#sortActions"), sortFeedback = $("#sortFeedback"), sortNext = $("#sortNext"), sortDots = $("#sortDots");
+  SORT_TASKS.forEach(() => sortDots.appendChild(document.createElement("i")));
+  function renderSort() {
+    sortDone = false;
+    sortTask.textContent = SORT_TASKS[sortIdx].task;
+    $("#sortCount").textContent = `SCENARIO ${String(sortIdx + 1).padStart(2, "0")} / ${String(SORT_TASKS.length).padStart(2, "0")}`;
+    $("#sortScore").textContent = `${sortScore} / ${sortAnswered}`;
+    sortFeedback.textContent = "先读场景，再选一个归属。有些任务没有单一主人。";
+    sortNext.disabled = true;
+    sortNext.textContent = "下一题 →";
+    $$("#sortActions button").forEach((b) => { b.disabled = false; b.className = ""; });
+    $$("#sortDots i").forEach((d, i) => { d.className = i < sortIdx ? "done" : i === sortIdx ? "now" : ""; });
+  }
+  sortActions.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || sortDone) return;
+    sortDone = true;
+    const picked = btn.dataset.answer;
+    const right = SORT_TASKS[sortIdx].answer;
+    sortAnswered++;
+    if (picked === right) sortScore++;
+    $$("#sortActions button").forEach((b) => {
+      b.disabled = true;
+      if (b.dataset.answer === right) b.classList.add("correct");
+      if (b === btn && picked !== right) b.classList.add("wrong");
+    });
+    const label = { infra: "AI Infra", ops: "LLMOps", shared: "共同边界" }[right];
+    sortFeedback.innerHTML = `<b>归属：${label}。</b>${esc(SORT_TASKS[sortIdx].why)}`;
+    $("#sortScore").textContent = `${sortScore} / ${sortAnswered}`;
+    sortNext.disabled = false;
+    if (sortIdx === SORT_TASKS.length - 1) sortNext.textContent = "重新开始 ↺";
+  });
+  sortNext.addEventListener("click", () => {
+    if (sortIdx === SORT_TASKS.length - 1) {
+      sortIdx = 0; sortScore = 0; sortAnswered = 0; renderSort(); return;
+    }
+    sortIdx++; renderSort();
+  });
+  if (sortTask) renderSort();
+
+  /* ---------- 01 stack & latency ---------- */
+  const STACK_DATA = {
+    5: { k: "LAYER 05 · BOUNDARY", t: "产品 / API", d: "用户只感知到“快不快、准不准、贵不贵”。这一层把产品 SLO 翻译成 infra 的吞吐/延迟预算，也把 infra 的现实约束翻译回产品取舍。", m: [["关注", "p95 延迟 · 可用性 · 单位成本"], ["典型", "API gateway · 限流 · 计费"], ["崩掉时", "超时、排队、账单失控"]] },
+    4: { k: "LAYER 04 · RUNTIME", t: "训练 / 推理 Runtime", d: "训练框架负责计算图、并行、梯度同步与 checkpoint；推理引擎负责 KV Cache、batching、kernel 与采样。它是“把硬件变成模型能力”的软件层。", m: [["关注", "tokens/s · MFU · 首 token 延迟"], ["典型", "PyTorch FSDP · vLLM · SGLang"], ["崩掉时", "OOM、吞吐塌陷、错误结果"]] },
+    3: { k: "LAYER 03 · SCHEDULER", t: "集群调度", d: "把任务放进正确的机器：队列、优先级、gang scheduling、拓扑感知、抢占与弹性。调度器决定集群是“忙而有序”还是“碎片化空转”。", m: [["关注", "排队时间 · 利用率 · 抢占率"], ["典型", "Kubernetes · Slurm · 自研调度"], ["崩掉时", "任务饿死、资源碎片、整组等待"]] },
+    2: { k: "LAYER 02 · FABRIC", t: "网络 / 存储", d: "节点内 NVLink、节点间 RDMA/InfiniBand，以及并行文件系统。分布式训练每走一步都可能要跨这条线；带宽、延迟和拓扑决定扩展效率。", m: [["关注", "all-reduce 时间 · 带宽 · 尾延迟"], ["典型", "NVLink · InfiniBand · RDMA · Lustre"], ["崩掉时", "通信等待、checkpoint 卡住、坏链路"]] },
+    1: { k: "LAYER 01 · SILICON", t: "GPU / 加速器", d: "SM、Tensor Core、HBM 和 L2 cache。峰值算力只是上限；能否喂饱它，取决于数据复用、访存和 kernel 形状。", m: [["关注", "FLOPS · HBM 带宽 · 容量"], ["典型", "H100 / H200 · MI300 · TPU"], ["崩掉时", "算力闲置、OOM、热降频"]] },
+    0: { k: "LAYER 00 · FACILITY", t: "数据中心", d: "供电、冷却、机柜和网络布线。AI 集群的功率密度极高；电力与散热经常比芯片更早成为扩张瓶颈。", m: [["关注", "MW · PUE · 机柜功率 · 水耗"], ["典型", "液冷 · 高压直流 · 柴发"], ["崩掉时", "降频、停机、整个集群不可用"]] }
+  };
+  function setLayer(n) {
+    $$(".stack-layer").forEach((b) => b.classList.toggle("active", Number(b.dataset.layer) === n));
+    const d = STACK_DATA[n];
+    $("#stackKicker").textContent = d.k;
+    $("#stackTitle").textContent = d.t;
+    $("#stackDesc").textContent = d.d;
+    $("#stackMetrics").innerHTML = d.m.map(([k, v]) => `<span><b>${esc(k)}</b>${esc(v)}</span>`).join("");
+  }
+  if ($("#stackBody")) {
+    $$(".stack-layer").forEach((b) => b.addEventListener("click", () => setLayer(Number(b.dataset.layer))));
+    setLayer(5);
+  }
+
+  const LAT_DATA = [
+    ["L1 / L2 cache", "≈ 1 ns", 7],
+    ["HBM 显存", "≈ 100 ns", 23],
+    ["NVLink 节点内", "≈ 1 µs", 42],
+    ["RDMA 跨节点", "≈ 5 µs", 58],
+    ["SSD / 存储", "≈ 100 µs", 76],
+    ["跨区域网络", "≈ 1 ms", 100]
+  ];
+  const latBars = $("#latBars");
+  if (latBars) {
+    latBars.innerHTML = LAT_DATA.map(([n, v, w]) =>
+      `<div class="lat-row"><span class="lat-name">${n}</span><div class="lat-track"><div class="lat-fill" style="width:${w}%"></div></div><span class="lat-val">${v}</span></div>`).join("");
+  }
+
+  /* ---------- 02 roofline ---------- */
+  const roofSvg = $("#roofSvg");
+  const PEAK = 494, BW = 3.35, RIDGE = PEAK / BW;
+  function roofX(ai) { return 58 + (Math.log10(ai) / Math.log10(2000)) * 574; }
+  function roofY(perf) { return 24 + (Math.log10(1200) - Math.log10(Math.max(.3, perf))) / (Math.log10(1200) - Math.log10(.3)) * 312; }
+  function buildRoofAxes() {
+    if (!roofSvg) return;
+    const grid = $("#roofGrid"), axis = $("#roofAxis");
+    const gx = [1, 10, 100, 1000], gy = [1, 10, 100, 1000];
+    gx.forEach((v) => {
+      const x = roofX(v);
+      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      l.setAttribute("x1", x); l.setAttribute("y1", 24); l.setAttribute("x2", x); l.setAttribute("y2", 336);
+      grid.appendChild(l);
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", x); t.setAttribute("y", 354); t.setAttribute("text-anchor", "middle"); t.textContent = v;
+      axis.appendChild(t);
+    });
+    gy.forEach((v) => {
+      const y = roofY(v);
+      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      l.setAttribute("x1", 58); l.setAttribute("y1", y); l.setAttribute("x2", 632); l.setAttribute("y2", y);
+      grid.appendChild(l);
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", 50); t.setAttribute("y", y + 3); t.setAttribute("text-anchor", "end"); t.textContent = v;
+      axis.appendChild(t);
+    });
+    let d = "";
+    for (let i = 0; i <= 160; i++) {
+      const ai = Math.pow(10, (i / 160) * Math.log10(2000));
+      const perf = Math.min(PEAK, ai * BW);
+      d += `${i ? "L" : "M"}${roofX(ai).toFixed(2)} ${roofY(perf).toFixed(2)}`;
+    }
+    $("#roofCurve").setAttribute("d", d);
+    const rx = roofX(RIDGE);
+    $("#roofRidge").setAttribute("x1", rx); $("#roofRidge").setAttribute("x2", rx);
+    $("#roofRidgeLabel").textContent = `ridge ≈ ${Math.round(RIDGE)} FLOP/Byte`;
+  }
+  function setRoof(ai, activeBtn) {
+    if (!roofSvg) return;
+    ai = clamp(ai, 1, 1000);
+    const perf = Math.min(PEAK, ai * BW);
+    const pct = perf / PEAK * 100;
+    $("#roofDot").setAttribute("cx", roofX(ai).toFixed(2));
+    $("#roofDot").setAttribute("cy", roofY(perf).toFixed(2));
+    $("#roofAIVal").textContent = ai < 10 ? ai.toFixed(1) : Math.round(ai);
+    $("#roofAILabel").textContent = ai < 10 ? ai.toFixed(1) : Math.round(ai);
+    const band = $("#roofBandDot");
+    if (band) band.style.left = clamp(Math.log10(ai) / 3 * 100, 0, 100).toFixed(1) + "%";
+    $("#roofPerfVal").textContent = perf < 10 ? perf.toFixed(1) : Math.round(perf);
+    $("#roofPctVal").textContent = pct < 1 ? pct.toFixed(1) + "%" : pct.toFixed(0) + "%";
+    const slider = $("#roofAI");
+    slider.value = Math.round(Math.log10(ai) / 3 * 100);
+    syncRange(slider);
+    const memBound = perf < PEAK * .985;
+    $("#roofMode").textContent = memBound ? "MEMORY-BOUND" : "COMPUTE-BOUND";
+    $("#roofExplain").textContent = memBound
+      ? "工作点在斜线区：每搬 1 字节只做很少的运算，HBM 带宽先到顶。LLM 自回归 decode 常在这里；量化、KV Cache、batching 是关键。"
+      : "工作点在平台区：矩阵乘有足够数据复用，瓶颈变成 Tensor Core 利用率和 kernel 效率。prefill 和大 batch 训练更容易到这里。";
+    $$(".roof-presets button").forEach((b) => b.classList.toggle("active", b === activeBtn));
+  }
+  if (roofSvg) {
+    buildRoofAxes();
+    setRoof(1, $$(".roof-presets button")[0]);
+    $("#roofAI").addEventListener("input", (e) => {
+      const ai = Math.pow(10, Number(e.target.value) / 100 * Math.log10(1000));
+      setRoof(ai, null);
+    });
+    $$(".roof-presets button").forEach((b) => b.addEventListener("click", () => setRoof(Number(b.dataset.ai), b)));
+  }
+
+  /* ---------- 03 parallelism ---------- */
+  const PAR_DATA = {
+    dp: { name: "数据并行 Data Parallel", desc: "每张 GPU 都保留完整模型，但读不同的数据 batch。反向传播后用 All-Reduce 汇总梯度，让 8 份模型保持一致。", tip: "适合：模型能放进单卡，想扩大 batch 与吞吐。DP 通常跨节点，通信量大但实现最简单。", mem: 90, comm: 55, cplx: 20, memTxt: "高", commTxt: "中", cplxTxt: "低" },
+    tp: { name: "张量并行 Tensor Parallel", desc: "把同一层的权重矩阵按列/行切到多张 GPU 上，每层都要做 All-Gather / All-Reduce。模型能塞下，但通信非常频繁。", tip: "适合：单卡放不下、又需要低延迟。TP 通常限制在 NVLink 域内（一个节点内），跨节点代价很高。", mem: 34, comm: 92, cplx: 62, memTxt: "低", commTxt: "很高", cplxTxt: "中高" },
+    pp: { name: "流水并行 Pipeline Parallel", desc: "把不同层放到不同 stage，micro-batch 像流水线一样穿过。单卡显存下降，但会出现 pipeline bubble，需要调度来填满。", tip: "适合：模型非常深、跨节点扩展。stage 间只传激活，通信量比 TP 小，但实现和调度复杂。", mem: 40, comm: 42, cplx: 82, memTxt: "中", commTxt: "中", cplxTxt: "高" },
+    zero: { name: "ZeRO-3 参数分片", desc: "把参数、梯度和优化器状态都切到 8 张 GPU 上，每张卡只保存 1/8。计算前按需 All-Gather，计算后释放，用通信换显存。", tip: "适合：显存吃紧、集群带宽充足。ZeRO-1/2/3 分别切优化器、梯度、参数，通信量逐级上升。", mem: 20, comm: 90, cplx: 68, memTxt: "很低", commTxt: "很高", cplxTxt: "中高" }
+  };
+  const PAR_POS = Array.from({ length: 8 }, (_, i) => ({ x: 74 + (i % 4) * 172, y: i < 4 ? 84 : 218 }));
+  function renderPar(mode) {
+    const svg = $("#parSvg");
+    if (!svg) return;
+    const d = PAR_DATA[mode];
+    const w = 138, h = 64;
+    let links = "", boxes = "";
+    const ring = [[0,1],[1,2],[2,3],[3,7],[7,6],[6,5],[5,4],[4,0]];
+    if (mode === "dp" || mode === "zero") {
+      ring.forEach(([a, b]) => {
+        const A = PAR_POS[a], B = PAR_POS[b];
+        links += `<line class="pg-link ${mode === "zero" ? "orange" : ""}" x1="${A.x + w/2}" y1="${A.y + h/2}" x2="${B.x + w/2}" y2="${B.y + h/2}"/>`;
+      });
+    }
+    if (mode === "tp") {
+      [0, 4].forEach((start) => {
+        for (let i = 0; i < 3; i++) {
+          const A = PAR_POS[start + i], B = PAR_POS[start + i + 1];
+          links += `<line class="pg-link" x1="${A.x + w}" y1="${A.y + h/2}" x2="${B.x}" y2="${B.y + h/2}"/>`;
+        }
+      });
+    }
+    if (mode === "pp") {
+      [0, 4].forEach((start) => {
+        for (let i = 0; i < 3; i++) {
+          const A = PAR_POS[start + i], B = PAR_POS[start + i + 1];
+          links += `<line class="pg-link orange" x1="${A.x + w}" y1="${A.y + h/2}" x2="${B.x}" y2="${B.y + h/2}"/>`;
+        }
+      });
+    }
+    PAR_POS.forEach((p, i) => {
+      const hot = mode === "tp" ? (i % 4 === 0) : mode === "pp" ? (i < 4) : true;
+      let sub = "full model";
+      if (mode === "dp") sub = `batch shard ${i}`;
+      if (mode === "tp") sub = `weight shard ${i % 4}/3`;
+      if (mode === "pp") sub = `stage ${i % 4 + 1} · replica ${i < 4 ? 0 : 1}`;
+      if (mode === "zero") sub = `param shard ${i}/7`;
+      boxes += `<g><rect class="pg-box ${hot ? "hot" : "teal"}" x="${p.x}" y="${p.y}" width="${w}" height="${h}" rx="6"/>
+        <text class="pg-label" x="${p.x + w/2}" y="${p.y + 25}">GPU ${i}</text>
+        <text class="pg-sub" x="${p.x + w/2}" y="${p.y + 42}">${sub}</text></g>`;
+    });
+    let groups = "";
+    if (mode === "tp") {
+      groups = `<text class="pg-group-label" x="212" y="42">TP GROUP 0 · 4 GPUs</text><text class="pg-group-label" x="556" y="42">TP GROUP 1 · 4 GPUs</text>`;
+    } else if (mode === "pp") {
+      groups = `<text class="pg-group-label" x="380" y="40">PIPELINE REPLICA 0 · STAGES 1–4</text><text class="pg-group-label" x="380" y="180">PIPELINE REPLICA 1 · STAGES 1–4</text>`;
+    } else {
+      groups = `<text class="pg-group-label" x="380" y="42">${mode === "dp" ? "8 REPLICAS · GRADIENT ALL-REDUCE RING" : "8 SHARDS · ALL-GATHER ON DEMAND"}</text>`;
+    }
+    svg.innerHTML = groups + links + boxes;
+    $$("#parModes button").forEach((b) => b.classList.toggle("active", b.dataset.par === mode));
+    $("#parKicker").textContent = "STRATEGY · " + mode.toUpperCase();
+    $("#parName").textContent = d.name;
+    $("#parDesc").textContent = d.desc;
+    $("#parTip").innerHTML = d.tip;
+    $("#parMem").style.width = d.mem + "%";
+    $("#parComm").style.width = d.comm + "%";
+    $("#parCplx").style.width = d.cplx + "%";
+    $("#parMemVal").textContent = d.memTxt;
+    $("#parCommVal").textContent = d.commTxt;
+    $("#parCplxVal").textContent = d.cplxTxt;
+  }
+  if ($("#parSvg")) {
+    $$("#parModes button").forEach((b) => b.addEventListener("click", () => renderPar(b.dataset.par)));
+    renderPar("dp");
+  }
+
+  const ringSvg = $("#ringSvg");
+  let ringPlaying = false, ringRaf = 0, ringAngle = 0;
+  if (ringSvg) {
+    const nodes = $("#ringNodes"), chunks = $("#ringChunks");
+    const cx = 180, cy = 100, R = 62;
+    for (let i = 0; i < 4; i++) {
+      const a = (-90 + i * 90) * Math.PI / 180;
+      const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+      nodes.innerHTML += `<circle class="ring-node" cx="${x}" cy="${y}" r="15"/><text class="ring-node-label" x="${x}" y="${y + 2.5}">G${i}</text>`;
+    }
+    const chunkEls = [];
+    for (let i = 0; i < 8; i++) {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("r", "3.3"); c.setAttribute("class", "ring-chunk");
+      chunks.appendChild(c); chunkEls.push(c);
+    }
+    function drawRing() {
+      chunkEls.forEach((c, i) => {
+        const a = (ringAngle + i * 45) * Math.PI / 180;
+        c.setAttribute("cx", (cx + R * Math.cos(a)).toFixed(2));
+        c.setAttribute("cy", (cy + R * Math.sin(a)).toFixed(2));
+      });
+      if (ringPlaying) { ringAngle = (ringAngle + .8) % 360; ringRaf = requestAnimationFrame(drawRing); }
+    }
+    drawRing();
+    $("#ringPlay").addEventListener("click", () => {
+      ringPlaying = !ringPlaying;
+      $("#ringPlay").textContent = ringPlaying ? "❚❚ 暂停" : "▶ 播放";
+      if (ringPlaying) ringRaf = requestAnimationFrame(drawRing);
+      else cancelAnimationFrame(ringRaf);
+    });
+  }
+
+  /* ---------- 04 memory calculator ---------- */
+  const memState = { p: 7, prec: "bf16", zero: 0, batch: 2, seq: 2048 };
+  function renderMem() {
+    if (!$("#memTotal")) return;
+    const bytesW = memState.prec === "bf16" ? 2 : 1;
+    const P = memState.p;
+    const weights = P * bytesW;
+    const grads = P * bytesW;
+    const optBase = 12 * P;
+    const opt = memState.zero >= 1 ? optBase / 8 : optBase;
+    const gr = memState.zero >= 2 ? grads / 8 : grads;
+    const wt = memState.zero >= 3 ? weights / 8 : weights;
+    const act = memState.batch * memState.seq * 4096 * 32 * bytesW * 8 / 1e9;
+    const total = wt + gr + opt + act;
+    const maxScale = Math.max(80, total * 1.04);
+    const width = (v) => (v / maxScale * 100).toFixed(2) + "%";
+    $("#msWeights").style.width = width(wt);
+    $("#msGrads").style.width = width(gr);
+    $("#msOpt").style.width = width(opt);
+    $("#msAct").style.width = width(act);
+    $("#mem80").style.left = (80 / maxScale * 100).toFixed(2) + "%";
+    $("#memTotal").textContent = total.toFixed(1);
+    $("#memStatus").textContent = total <= 80 ? "放得下 · 80GB 上限内" : "OOM 风险 · 超过 80GB";
+    $("#memStatus").className = "mem-status " + (total <= 80 ? "ok" : "bad");
+    $("#memLegend").innerHTML = [
+      ["#e8552f", "权重", wt], ["#ffb15c", "梯度", gr], ["#0d7a72", "优化器状态", opt], ["#4f8fe8", "激活（估算）", act]
+    ].map(([c, n, v]) => `<span><i style="background:${c}"></i>${n}<b>${v.toFixed(1)} GB</b></span>`).join("");
+    $("#memFormula").textContent = `weights ${wt.toFixed(1)} + grads ${gr.toFixed(1)} + optimizer ${opt.toFixed(1)} + activations ${act.toFixed(1)} GB / GPU`;
+    syncRange($("#memBatch")); syncRange($("#memSeq"));
+    $("#memBatchVal").textContent = memState.batch;
+    $("#memSeqVal").textContent = memState.seq.toLocaleString("en-US");
+  }
+  if ($("#memTotal")) {
+    $$("#memP button").forEach((b) => b.addEventListener("click", () => {
+      memState.p = Number(b.dataset.p);
+      $$("#memP button").forEach((x) => x.classList.toggle("active", x === b));
+      renderMem();
+    }));
+    $$("#memPrec button").forEach((b) => b.addEventListener("click", () => {
+      memState.prec = b.dataset.prec;
+      $$("#memPrec button").forEach((x) => x.classList.toggle("active", x === b));
+      renderMem();
+    }));
+    $$("#memZero button").forEach((b) => b.addEventListener("click", () => {
+      memState.zero = Number(b.dataset.zero);
+      $$("#memZero button").forEach((x) => x.classList.toggle("active", x === b));
+      renderMem();
+    }));
+    $("#memBatch").addEventListener("input", (e) => { memState.batch = Number(e.target.value); renderMem(); });
+    $("#memSeq").addEventListener("input", (e) => { memState.seq = Number(e.target.value); renderMem(); });
+    renderMem();
+  }
+
+  /* ---------- 05 serving simulation ---------- */
+  const REQS = [
+    { id: "A", at: 0, len: 8, color: "#e8552f" },
+    { id: "B", at: 0, len: 2, color: "#0d7a72" },
+    { id: "C", at: 0, len: 5, color: "#1e5bd7" },
+    { id: "D", at: 0, len: 4, color: "#6b4dff" },
+    { id: "E", at: 2, len: 3, color: "#b7791f" },
+    { id: "F", at: 4, len: 5, color: "#b04a76" },
+    { id: "G", at: 7, len: 2, color: "#2b8a8a" }
+  ];
+  let serveMode = "static", serveData = null, serveTick = 0, serveTimer = null;
+  function schedule(mode) {
+    const slots = Array.from({ length: 4 }, () => []);
+    const starts = {};
+    let t = 0, done = 0, guard = 0;
+    if (mode === "static") {
+      while (done < REQS.length && guard++ < 60) {
+        const avail = REQS.filter((r) => r.at <= t && starts[r.id] === undefined).sort((a, b) => a.at - b.at);
+        if (!avail.length) { t++; continue; }
+        const batch = avail.slice(0, 4);
+        const dur = Math.max(...batch.map((r) => r.len));
+        batch.forEach((r, i) => {
+          starts[r.id] = t;
+          for (let k = 0; k < dur; k++) if (!slots[i][t + k]) slots[i][t + k] = { req: r, waste: k >= r.len };
+          done++;
+        });
+        t += dur;
+      }
+    } else {
+      const active = Array(4).fill(null);
+      while (done < REQS.length && guard++ < 100) {
+        for (let s = 0; s < 4; s++) {
+          if (active[s] && active[s].remaining <= 0) { active[s] = null; }
+        }
+        for (let s = 0; s < 4; s++) {
+          if (active[s]) continue;
+          const next = REQS.find((r) => r.at <= t && starts[r.id] === undefined);
+          if (next) { starts[next.id] = t; active[s] = { req: next, remaining: next.len }; }
+        }
+        for (let s = 0; s < 4; s++) {
+          if (!active[s]) continue;
+          slots[s][t] = { req: active[s].req, waste: false };
+          active[s].remaining--;
+          if (active[s].remaining === 0) done++;
+        }
+        t++;
+        if (t > 50) break;
+      }
+    }
+    const end = t;
+    let occupied = 0;
+    slots.forEach((row) => row.forEach((c) => { if (c && !c.waste) occupied++; }));
+    const waits = REQS.map((r) => (starts[r.id] ?? end) - r.at);
+    return { slots, end, util: occupied / (4 * end), wait: waits.reduce((a, b) => a + b, 0) / waits.length, starts };
+  }
+  function renderServe() {
+    if (!$("#serveSlots")) return;
+    serveData = schedule(serveMode);
+    serveTick = 0;
+    const T = serveData.end;
+    $("#serveSlots").innerHTML = serveData.slots.map((row, s) =>
+      `<div class="serve-row" style="grid-template-columns:repeat(${T},1fr)">` +
+      Array.from({ length: T }, (_, t) => {
+        const c = row[t];
+        if (!c) return `<div class="serve-cell"></div>`;
+        const r = c.req;
+        if (c.waste) return `<div class="serve-cell reserved" title="${r.id} 已完成，但静态 batch 仍占用 slot · tick ${t}"></div>`;
+        return `<div class="serve-cell filled" style="background:${r.color}" title="${r.id} · tick ${t}"></div>`;
+      }).join("") + `</div>`).join("");
+    $("#serveAxis").style.gridTemplateColumns = `repeat(${T},1fr)`;
+    $("#serveAxis").innerHTML = Array.from({ length: T }, (_, i) => `<span>${i % 2 === 0 ? i : ""}</span>`).join("");
+    $("#serveLegend").innerHTML = REQS.map((r) => `<span><i style="background:${r.color}"></i>${r.id} ${r.at}→${r.at + r.len}</span>`).join("") + '<span><i style="background:rgba(255,255,255,.09);border:1px dashed rgba(255,255,255,.2)"></i>reserved</span>';
+    $("#serveTime").textContent = T;
+    $("#serveUtil").textContent = Math.round(serveData.util * 100) + "%";
+    $("#serveWait").textContent = serveData.wait.toFixed(1);
+    updateServePlayhead();
+    $("#servePlay").textContent = "▶ 播放";
+    clearInterval(serveTimer); serveTimer = null;
+  }
+  function updateServePlayhead() {
+    if (!serveData) return;
+    $("#servePlayhead").style.left = (serveTick / serveData.end * 100).toFixed(2) + "%";
+  }
+  if ($("#serveSlots")) {
+    $$("#serveModes button").forEach((b) => b.addEventListener("click", () => {
+      serveMode = b.dataset.mode;
+      $$("#serveModes button").forEach((x) => x.classList.toggle("active", x === b));
+      renderServe();
+    }));
+    $("#servePlay").addEventListener("click", () => {
+      if (serveTimer) {
+        clearInterval(serveTimer); serveTimer = null; $("#servePlay").textContent = "▶ 播放"; return;
+      }
+      if (serveTick >= serveData.end) serveTick = 0;
+      $("#servePlay").textContent = "❚❚ 暂停";
+      serveTimer = setInterval(() => {
+        serveTick++;
+        updateServePlayhead();
+        if (serveTick >= serveData.end) {
+          clearInterval(serveTimer); serveTimer = null; serveTick = serveData.end; updateServePlayhead();
+          $("#servePlay").textContent = "▶ 播放";
+        }
+      }, 320);
+    });
+    $("#serveReset").addEventListener("click", () => { clearInterval(serveTimer); serveTimer = null; renderServe(); });
+    renderServe();
+  }
+
+  const pagedBlocks = $("#pagedBlocks");
+  if (pagedBlocks) {
+    const layout = ["A","A","B","A","C","B","A","C","B","A","A","B","","", "", ""];
+    pagedBlocks.innerHTML = layout.map((x, i) => `<div class="paged-block ${x ? "used " + (x === "B" ? "b" : x === "C" ? "c" : "") : ""}" title="${x ? "序列 " + x : "free page"}">${x || "·"}</div>`).join("");
+  }
+
+  /* ---------- 06 compression ---------- */
+  $$("#compModes button").forEach((b) => b.addEventListener("click", () => {
+    $$("#compModes button").forEach((x) => x.classList.toggle("active", x === b));
+    $$(".comp-panel").forEach((p) => p.classList.toggle("active", p.dataset.panel === b.dataset.comp));
+  }));
+  const Q_DATA = {
+    fp16: { mem: 100, speed: "1.0×", memBar: 100, speedBar: 34, q: "低", qBar: 18, bits: 16, label: "FP16 · 2 bytes / weight", note: "FP16/BF16 是安全默认；精度高、kernel 成熟。大模型预训练常用 BF16。" },
+    int8: { mem: 50, speed: "1.8×", memBar: 50, speedBar: 60, q: "中", qBar: 50, bits: 8, label: "INT8 · 1 byte / weight", note: "INT8 权重或激活量化常能显著降低显存与带宽；需要校准数据，部分算子需要专用 kernel。" },
+    int4: { mem: 25, speed: "2.6×", memBar: 25, speedBar: 86, q: "高", qBar: 84, bits: 4, label: "INT4 · 0.5 byte / weight", note: "INT4 / W4A16 更激进，依赖 GPTQ、AWQ 等后训练量化；质量风险更高，需按任务验收。" }
+  };
+  function renderQuant(key) {
+    const d = Q_DATA[key];
+    if (!d) return;
+    $$("#quantModes button").forEach((b) => b.classList.toggle("active", b.dataset.q === key));
+    $("#qMem").textContent = d.mem + "%";
+    $("#qMemBar").style.width = d.memBar + "%";
+    $("#qSpeed").textContent = d.speed;
+    $("#qSpeedBar").style.width = d.speedBar + "%";
+    $("#qQuality").textContent = d.q;
+    $("#qQualityBar").style.width = d.qBar + "%";
+    $("#bitLabel").textContent = d.label;
+    $("#quantNote").textContent = d.note;
+    $$("#bitGrid .bit-cell").forEach((c) => { c.style.height = (d.bits * 3.2) + "px"; c.style.opacity = d.bits === 16 ? "1" : d.bits === 8 ? ".9" : ".78"; });
+  }
+  if ($("#bitGrid")) {
+    for (let i = 0; i < 32; i++) {
+      const c = document.createElement("div"); c.className = "bit-cell"; $("#bitGrid").appendChild(c);
+    }
+    $$("#quantModes button").forEach((b) => b.addEventListener("click", () => renderQuant(b.dataset.q)));
+    renderQuant("fp16");
+  }
+
+  const SPEC_DRAFT = ["the", "cat", "sat", "on"];
+  let specRunning = false;
+  function buildSpec() {
+    if (!$("#specDraft")) return;
+    $("#specDraft").innerHTML = SPEC_DRAFT.map((t) => `<span class="spec-token">${t}</span>`).join("");
+    $("#specTarget").innerHTML = `<span class="spec-token">the</span><span class="spec-token">cat</span><span class="spec-token">sat</span><span class="spec-token">a</span>`;
+    $("#specResult").textContent = "点击“验证”，让目标模型一次检查 4 个草稿 token。";
+    $("#specSpeed").textContent = "ACCEPTED 0 / 4";
+    $$(".spec-token").forEach((t) => t.classList.remove("accepted", "rejected", "verified"));
+  }
+  if ($("#specDraft")) {
+    buildSpec();
+    $("#specPlay").addEventListener("click", () => {
+      if (specRunning) return;
+      specRunning = true;
+      buildSpec();
+      const draft = $$("#specDraft .spec-token");
+      const target = $$("#specTarget .spec-token");
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i < 3) {
+          draft[i].classList.add("accepted"); target[i].classList.add("accepted");
+          $("#specSpeed").textContent = `ACCEPTED ${i + 1} / 4`;
+          i++;
+        } else if (i === 3) {
+          draft[3].classList.add("rejected");
+          target[3].classList.add("verified");
+          $("#specResult").innerHTML = "<b>接受 3 个 token，拒绝 1 个。</b>目标模型在一次前向里验证了 4 个位置，只多花了一点算力，却省下 3 次串行生成。";
+          $("#specSpeed").textContent = "ACCEPTED 3 / 4 · ≈2.4×";
+          i++;
+        } else {
+          clearInterval(timer); specRunning = false;
+        }
+      }, 420);
+    });
+  }
+
+  /* ---------- 07 reliability ---------- */
+  const relGrid = $("#clusterGrid");
+  if (relGrid) {
+    for (let i = 0; i < 48; i++) {
+      const n = document.createElement("div");
+      n.className = "node " + (i === 17 ? "reserved" : i % 7 < 3 ? "busy" : i % 11 === 0 ? "reserved" : "");
+      n.title = "node " + i;
+      relGrid.appendChild(n);
+    }
+    let relBusy = false;
+    function renderRel() {
+      const interval = Number($("#relInterval").value);
+      const checkpoint = Math.floor(70 / interval) * interval;
+      const lost = 70 - checkpoint;
+      const goodput = (100 - lost) / 103 * 100;
+      $("#relIntervalVal").textContent = interval + " min";
+      $("#relLost").textContent = lost + "%";
+      $("#relGoodput").textContent = goodput.toFixed(1) + "%";
+      $("#jobCkpt").textContent = checkpoint + "%";
+      $("#jobLost").textContent = lost + "%";
+      $("#jobCheck").style.left = checkpoint + "%";
+      syncRange($("#relInterval"));
+    }
+    $("#relInterval").addEventListener("input", renderRel);
+    renderRel();
+    $("#jobFill").style.width = "70%";
+    $("#jobPct").textContent = "70%";
+    $("#relFail").addEventListener("click", () => {
+      if (relBusy) return;
+      relBusy = true;
+      const interval = Number($("#relInterval").value);
+      const checkpoint = Math.floor(70 / interval) * interval;
+      const node = relGrid.children[17];
+      node.className = "node failed";
+      $("#relStatus").textContent = "FAILURE";
+      $("#relFail").disabled = true;
+      $("#jobFill").style.width = "70%";
+      setTimeout(() => {
+        $("#jobFill").style.width = checkpoint + "%";
+        $("#jobPct").textContent = checkpoint + "%";
+        $("#relStatus").textContent = "RECOVERING";
+        node.className = "node recovering";
+      }, 550);
+      setTimeout(() => {
+        $("#jobFill").style.width = "100%";
+        $("#jobPct").textContent = "100%";
+        $("#relStatus").textContent = "HEALTHY";
+        node.className = "node busy";
+        $("#relFail").disabled = false;
+        relBusy = false;
+      }, 1900);
+    });
+  }
+
+  /* ---------- 08 LLMOps loop ---------- */
+  const OPS = [
+    { k: "STAGE 01 · INPUT CONTRACT", t: "数据 / Prompt：把“感觉”变成版本", d: "系统提示、few-shot 示例、RAG 模板、工具定义、模型版本都要可追溯。每次变更应带一个可复现的版本号，而不是“我昨天改了一下”。", a: ["prompt registry", "dataset snapshot", "model pin", "eval set"] },
+    { k: "STAGE 02 · EVAL GATE", t: "Eval：先证明没有变坏", d: "离线评测要覆盖真实场景、边界和对抗输入；按场景、语言、租户切片。发布门禁不是“平均分上涨”，而是关键切片不能倒退。", a: ["golden set", "slice metrics", "regression", "human review"] },
+    { k: "STAGE 03 · DEPLOY", t: "Deploy：灰度、可回滚", d: "新版本先给 1%–5% 流量，观察质量、延迟、错误率和成本。每个发布都要有明确的回滚开关和责任人。", a: ["canary", "feature flag", "rollback", "change log"] },
+    { k: "STAGE 04 · OBSERVE", t: "Observe：线上才是真实世界", d: "监控回答质量、拒答、越狱、延迟、token 成本和用户反馈。区分“模型错”“检索错”“工具错”，否则告警只会制造噪音。", a: ["traces", "quality sampling", "safety alerts", "cost"] },
+    { k: "STAGE 05 · FEEDBACK", t: "Feedback：把 bad case 变成下一版", d: "用户反馈、人工抽检、失败轨迹要回流到评测集和训练/提示数据。没有反馈闭环的 LLMOps 只是一次性上线。", a: ["bad cases", "labeling", "eval update", "next release"] }
+  ];
+  function setOps(i) {
+    $$(".ops-step").forEach((b, n) => b.classList.toggle("active", n === i));
+    const o = OPS[i];
+    $("#opsKicker").textContent = o.k;
+    $("#opsTitle").textContent = o.t;
+    $("#opsDesc").textContent = o.d;
+    $("#opsArtifacts").innerHTML = o.a.map((x) => `<span>${esc(x)}</span>`).join("");
+  }
+  if ($(".ops-step")) {
+    $$(".ops-step").forEach((b) => b.addEventListener("click", () => setOps(Number(b.dataset.step))));
+    setOps(0);
+  }
+
+  if ($("#relRelease")) {
+    $("#relEval").addEventListener("input", () => { $("#relEvalVal").textContent = Number($("#relEval").value).toFixed(2); syncRange($("#relEval")); });
+    $("#relErr").addEventListener("input", () => { $("#relErrVal").textContent = Number($("#relErr").value).toFixed(1) + "%"; syncRange($("#relErr")); });
+    syncRange($("#relEval")); syncRange($("#relErr"));
+    const resetRelease = () => {
+      $$(".release-step").forEach((s) => (s.className = "release-step"));
+      $("#releaseResult").textContent = "调整参数，点击“发布 v1.3”开始演练。";
+      $("#relRelease").disabled = false;
+    };
+    $("#relReset").addEventListener("click", resetRelease);
+    $("#relRelease").addEventListener("click", () => {
+      const evalScore = Number($("#relEval").value);
+      const err = Number($("#relErr").value);
+      const passEval = evalScore >= .8;
+      const passErr = err <= 2;
+      $("#relRelease").disabled = true;
+      $$(".release-step").forEach((s) => (s.className = "release-step"));
+      const steps = $$(".release-step");
+      steps[0].classList.add("on");
+      setTimeout(() => {
+        steps[0].classList.add(passEval ? "pass" : "fail");
+        steps[1].classList.add("on");
+      }, 600);
+      setTimeout(() => {
+        steps[1].classList.add(passErr ? "pass" : "fail");
+        steps[2].classList.add("on");
+      }, 1200);
+      setTimeout(() => {
+        steps[2].classList.add("pass");
+        steps[3].classList.add("on");
+      }, 1800);
+      setTimeout(() => {
+        const ok = passEval && passErr;
+        steps[3].classList.add(ok ? "pass" : "fail");
+        $("#releaseResult").innerHTML = ok
+          ? `<b>建议放量。</b>评测 ${evalScore.toFixed(2)} ≥ 0.80，canary 错误率 ${err.toFixed(1)}% ≤ 2%。继续监控 P95、成本和关键切片，逐步扩到 100%。`
+          : `<b>建议回滚 / 阻止发布。</b>${!passEval ? "离线评测未过门禁。" : ""}${!passErr ? " canary 错误率超过 2%。" : ""} 先定位是模型、检索还是工具导致，再决定下一版。`;
+        $("#relRelease").disabled = false;
+      }, 2400);
+    });
+  }
+
+  /* ---------- 09 observability ---------- */
+  const OBS = {
+    normal: { label: "NORMAL", p50: 240, p95: 820, err: ".8", eval: ".86", tone: "ok", alert: "所有指标在 SLO 内。继续观察。", line: [30, 31, 29, 32, 30, 28, 31, 30, 29, 31, 30, 30] },
+    incident: { label: "QUALITY INCIDENT", p50: 520, p95: 3400, err: "7.5", eval: ".74", tone: "bad", alert: "质量事故：错误率与 P95 同时上升。先看 bad case 切片，再决定回滚。", line: [30, 32, 31, 50, 75, 96, 108, 101, 90, 84, 77, 73] },
+    surge: { label: "TRAFFIC SURGE", p50: 380, p95: 1800, err: "1.2", eval: ".85", tone: "bad", alert: "流量突增：队列变长，P95 上升。扩容还是限流？先看单位成本与 SLO。", line: [30, 34, 40, 46, 56, 64, 61, 55, 50, 46, 43, 41] }
+  };
+  function sparkPath(values) {
+    const pts = values.map((v, i) => [i / (values.length - 1) * 620, 140 - v]);
+    const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+    const area = `${line} L620 150 L0 150 Z`;
+    return { line, area };
+  }
+  function setObs(mode) {
+    const d = OBS[mode];
+    $$("#obsModes button").forEach((b) => b.classList.toggle("active", b.dataset.obs === mode));
+    $("#obsModeLabel").textContent = d.label;
+    $("#obsP50").textContent = d.p50;
+    $("#obsP95").textContent = d.p95;
+    $("#obsErr").textContent = d.err;
+    $("#obsEval").textContent = d.eval;
+    $("#obsAlert").textContent = d.alert;
+    $("#obsAlert").classList.toggle("bad", d.tone === "bad");
+    $("#obsAlert").closest(".obs-console").querySelector(".obs-metrics").classList.toggle("alert", d.tone === "bad");
+    const p = sparkPath(d.line);
+    $("#obsLine").setAttribute("d", p.line);
+    $("#obsArea").setAttribute("d", p.area);
+  }
+  if ($("#obsChart")) {
+    $$("#obsModes button").forEach((b) => b.addEventListener("click", () => setObs(b.dataset.obs)));
+    setObs("normal");
+  }
+
+  function renderCost() {
+    if (!$("#costOut")) return;
+    const gpu = Number($("#costGpu").value), tps = Number($("#costTps").value), util = Number($("#costUtil").value) / 100;
+    const perHour = tps * 3600 * util;
+    const cost = gpu / perHour * 1e6;
+    $("#costGpuVal").textContent = "$" + gpu.toFixed(2);
+    $("#costTpsVal").textContent = tps.toLocaleString("en-US");
+    $("#costUtilVal").textContent = Math.round(util * 100) + "%";
+    $("#costOut").textContent = "$" + cost.toFixed(2);
+    $("#costPerHour").textContent = `≈ ${(perHour / 1e6).toFixed(2)}M tokens / GPU-hour`;
+    $("#costBarYou").style.width = Math.min(100, cost / 1.2 * 100).toFixed(1) + "%";
+    $("#costBarYouVal").textContent = "$" + cost.toFixed(2);
+    $("#costBarBest").style.width = Math.min(100, .28 / 1.2 * 100).toFixed(1) + "%";
+    syncRange($("#costGpu")); syncRange($("#costTps")); syncRange($("#costUtil"));
+  }
+  if ($("#costOut")) {
+    ["#costGpu", "#costTps", "#costUtil"].forEach((id) => $(id).addEventListener("input", renderCost));
+    renderCost();
+  }
+
+  /* ---------- 10 matrix / quiz ---------- */
+  $$("#matrixFilter button").forEach((b) => b.addEventListener("click", () => {
+    const f = b.dataset.f;
+    $$("#matrixFilter button").forEach((x) => x.classList.toggle("active", x === b));
+    $$("#matrixTable .matrix-row[data-owner]").forEach((r) => r.classList.toggle("hidden", f !== "all" && r.dataset.owner !== f));
+  }));
+
+  let quizScore = 0, quizAnswered = 0;
+  $$(".quiz-q").forEach((q) => {
+    const opts = $$(".q-opt", q), answer = Number(q.dataset.answer);
+    opts.forEach((btn) => btn.addEventListener("click", () => {
+      if (q.dataset.done) return;
+      q.dataset.done = "1";
+      const picked = Number(btn.dataset.opt);
+      const ok = picked === answer;
+      opts.forEach((o) => { o.disabled = true; if (Number(o.dataset.opt) === answer) o.classList.add("correct"); });
+      if (!ok) btn.classList.add("wrong");
+      q.querySelector(".q-fb").classList.add("show");
+      quizAnswered++; if (ok) quizScore++;
+      $("#quizScore").textContent = quizScore;
+      const msg = $("#quizMsg");
+      if (quizAnswered < 3) msg.textContent = `已答 ${quizAnswered} / 3，继续。`;
+      else if (quizScore === 3) msg.textContent = "全对：你已经能分清栈与生命周期。";
+      else if (quizScore === 2) msg.textContent = "不错：回看错题对应的章节。";
+      else msg.textContent = "建议回看 04 / 05 / 08 章。";
+    }));
+  });
+
+  setTimeout(updateUI, 40);
+})();
+
+</script>
+</body>
+</html>
