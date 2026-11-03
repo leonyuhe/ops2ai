@@ -4,6 +4,11 @@
 
 **在线阅读：** https://leonyuhe.github.io/ops2ai/
 
+## 🎮 交互式可视化教程（可以直接点开玩）
+
+- [大语言模型 · 可视化教程](https://leonyuhe.github.io/ops2ai/tutorials/llm-visual-tutorial.html) —— 13 章交互动画：token、注意力、Transformer、GRPO、推理模型、Agent
+- [AI Infra × LLMOps · 可视化教程](https://leonyuhe.github.io/ops2ai/tutorials/ai-infra-llmops-visual-tutorial.html) —— 11 章交互动画：数据通路、Roofline、并行、显存账本、连续批处理、可靠性与单位成本
+
 ## 内容模块
 
 - **转型地图**：运维技能 → AI Infra 技能映射、岗位图谱、六个月学习路线

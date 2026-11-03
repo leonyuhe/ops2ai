@@ -237,3 +237,34 @@
   background: linear-gradient(90deg, transparent, var(--sl-color-accent), transparent);
   opacity: 0.4;
 }
+
+/* 交互教程直达卡片 */
+.tutorials {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+@media (max-width: 720px) { .tutorials { grid-template-columns: 1fr; } }
+.tutorial-card {
+  display: block;
+  padding: 1.3rem 1.4rem;
+  border-radius: 1rem;
+  text-decoration: none !important;
+  color: var(--sl-color-text) !important;
+  border: 1px solid transparent;
+  background: linear-gradient(var(--sl-color-bg-sidebar), var(--sl-color-bg-sidebar)) padding-box,
+              linear-gradient(120deg, #2563eb, #7c3aed, #22d3ee) border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tutorial-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(37, 99, 235, 0.28);
+}
+.tutorial-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem; }
+.tutorial-desc { font-size: 0.85rem; color: var(--sl-color-gray-3); line-height: 1.6; margin-bottom: 0.7rem; }
+.tutorial-link {
+  font-size: 0.85rem; font-weight: 700;
+  background: linear-gradient(90deg, #60a5fa, #22d3ee);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
